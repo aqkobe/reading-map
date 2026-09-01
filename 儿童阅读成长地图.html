@@ -611,10 +611,11 @@ function checkinPoints(min){
 }
 function seed(){
   return {
-    child:{name:'',age:6,avatar:'👧',photo:null,birthday:'',setup:false},
+    child:{name:'',age:6,avatar:'👧',photo:null,birthday:'',setup:false,updatedAt:0},
     settings:{familyCode:null},
     books:[],
     checkins:[],
+    deleted:{books:{},checkins:{}}, // 删除墓碑：id -> 删除时间戳，随同步传播以在各端真正移除
   };
 }
 
@@ -645,8 +646,12 @@ async function loadState(){
     try{const ls=localStorage.getItem(KEY);if(ls)return JSON.parse(ls);}catch(e){}
     return null;
   };
-  // 安全网：file:// 下 IndexedDB 可能卡住，2 秒后直接以空状态继续，保证 UI 与按钮可用
-  return Promise.race([tryLoad(),new Promise(res=>setTimeout(()=>res(null),2000))]);
+  // 安全网：仅 file:// 下 IndexedDB 可能卡住时才用 2 秒兜底；
+  // http/https 直接等待，避免误判为「无数据」后把已保存状态清空（否则会反复弹出设置）
+  if(location.protocol==='file:'){
+    return Promise.race([tryLoad(),new Promise(res=>setTimeout(()=>res(null),2000))]);
+  }
+  return await tryLoad();
 }
 async function persist(){ // 仅落本地存储，不触发云端推送，避免拉取回环
   try{
@@ -928,14 +933,25 @@ function renderBadges(){
 function renderAll(){renderHome();renderBooks();renderMap();renderReport();renderBadges();}
 
 /* ===================== 云端同步 ===================== */
-let lastPullAt=0, pushTimer=null, syncState='syn', syncLabel='同步中…';
+let lastPullAt=0, pushTimer=null, syncState='syn', syncLabel='同步中…', explicitClearPhoto=false, syncPolling=false;
 function setSync(st,label){syncState=st;if(label)syncLabel=label;const d=document.getElementById('syncDot');if(d){d.className='syncdot '+st;d.textContent=label;}}
 function schedulePush(){if(!SB||!state.settings.familyCode)return;clearTimeout(pushTimer);pushTimer=setTimeout(doPush,800);}
-async function doPush(){if(!SB||!state.settings.familyCode)return;
+async function doPush(force){if(!SB||!state.settings.familyCode)return;
   setSync('syn','同步中…');
   const ts=new Date().toISOString();
+  // 读-改-写：先把云端已有数据合并进本机，保证多端写入时云端始终保留「并集」，不会互相覆盖
+  let remote=null,remotePhoto=null;
+  if(!force){
+    try{const {data}=await SB.from('reading_state').select('*').eq('family_id',state.settings.familyCode).maybeSingle();
+      if(data&&data.data){remote=data.data;if(data.data.child)remotePhoto=data.data.child.photo;}}catch(e){}
+    if(remote){mergeRemote(remote);await persist();renderAll();}
+  }
+  // 保护共享头像：本机没有照片且非用户主动清除时，沿用云端已有照片，避免把家庭共享头像清掉
+  let childToPush=state.child;
+  if(!force&&!state.child.photo&&!explicitClearPhoto&&remotePhoto)childToPush={...state.child,photo:remotePhoto};
+  explicitClearPhoto=false;
   const row={family_id:state.settings.familyCode,
-    data:{child:state.child,books:state.books,
+    data:{child:childToPush,books:state.books,deleted:state.deleted||{books:{},checkins:{}},
       checkins:state.checkins.map(c=>({...c,audio:null}))}, // 录音只存本机，不上传云端
     updated_at:ts};
   const {error}=await SB.from('reading_state').upsert(row,{onConflict:'family_id'});
@@ -951,9 +967,27 @@ async function doPull(){if(!SB||!state.settings.familyCode)return;
   toast('☁️ 已同步家人更新');
 }
 function mergeRemote(rd){
-  const bm=new Map(state.books.map(b=>[b.id,b]));(rd.books||[]).forEach(b=>{if(!bm.has(b.id))bm.set(b.id,b);});state.books=[...bm.values()];
-  const cm=new Map(state.checkins.map(c=>[c.id,c]));(rd.checkins||[]).forEach(c=>{if(!cm.has(c.id))cm.set(c.id,c);});state.checkins=[...cm.values()];
-  if(rd.child)state.child=rd.child;
+  // 合并删除墓碑：取并集，时间戳取较大者（保证一端删除能传播到另一端）
+  state.deleted=state.deleted||{books:{},checkins:{}};
+  if(rd.deleted){for(const k of ['books','checkins']){const rm=rd.deleted[k]||{};const lm=state.deleted[k]||{};
+    for(const id in rm){if(!(id in lm)||rm[id]>(lm[id]||0))lm[id]=rm[id];}state.deleted[k]=lm;}}
+  // 书籍：按 id 合并（新增/修改以 updatedAt 较新者胜出）；被墓碑标记的一律移除
+  const bm=new Map(state.books.map(b=>[b.id,b]));
+  (rd.books||[]).forEach(b=>{if(state.deleted.books[b.id])return;const ex=bm.get(b.id);
+    if(!ex||(b.updatedAt||0)>(ex.updatedAt||0))bm.set(b.id,b);});
+  state.books=[...bm.values()].filter(b=>!state.deleted.books[b.id]);
+  // 打卡：同理
+  const cm=new Map(state.checkins.map(c=>[c.id,c]));
+  (rd.checkins||[]).forEach(c=>{if(state.deleted.checkins[c.id])return;const ex=cm.get(c.id);
+    if(!ex||(c.updatedAt||0)>(ex.updatedAt||0))cm.set(c.id,c);});
+  state.checkins=[...cm.values()].filter(c=>!state.deleted.checkins[c.id]);
+  // 小读者资料：以 updatedAt 较新者为准；远程无照片时不抹掉本机真实头像
+  if(rd.child){
+    const rUpd=rd.child.updatedAt||0,lUpd=state.child.updatedAt||0;
+    if(rUpd>lUpd){const m={...rd.child};
+      if(!m.photo&&state.child&&state.child.photo)m.photo=state.child.photo;
+      state.child=m;}
+  }
 }
 let syncBound=false;
 function bindSync(){if(!SB||!state.settings.familyCode||syncBound)return;syncBound=true;
@@ -961,7 +995,10 @@ function bindSync(){if(!SB||!state.settings.familyCode||syncBound)return;syncBou
     .on('postgres_changes',{event:'UPDATE',schema:'public',table:'reading_state',filter:'family_id=eq.'+state.settings.familyCode},()=>doPull())
     .subscribe();
 }
-async function startSync(){if(!SB)return;bindSync();await doPull();setSync('ok','已同步 ☁️');}
+async function startSync(){if(!SB)return;bindSync();
+  // 定时轮询作为实时订阅的兜底：即便 Supabase Realtime 未开启该表，也能定期拉取家人更新
+  if(!syncPolling){syncPolling=true;setInterval(()=>{if(state.settings.familyCode)doPull();},15000);}
+  await doPull();setSync('ok','已同步 ☁️');}
 
 /* ===================== 交互 ===================== */
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2200);}
@@ -1063,7 +1100,7 @@ function submitCheckin(){
   // 勾选「全书读完」：自动填到最后一页
   if(finished&&book&&book.totalPages){pageEnd=book.totalPages;pages=Math.max(0,book.totalPages-(book.lastPage||0));}
   state.checkins.push({id:uid(),date:todayStr(),minutes:min,points:checkinPoints(min),note,audio:pendingAudio,ts:Date.now(),bookId,
-    pages:pages>0?pages:null,pageEnd:pageEnd>0?pageEnd:null});
+    pages:pages>0?pages:null,pageEnd:pageEnd>0?pageEnd:null,updatedAt:Date.now()});
   if(book){
     if(finished){book.status='finished';book.finishedAt=todayStr();if(book.totalPages)book.lastPage=book.totalPages;}
     else{
@@ -1107,20 +1144,29 @@ function saveBook(){
   if(status==='reading'){const other=state.books.find(b=>b.status==='reading'&&b.id!==editId);if(other){toast('请先完成《'+other.title+'》再开始新书');return;}}
   const before=snapshot();const beforeBadge=badgeState(before);const beforeMap=mapState(before);
   if(editId){const b=state.books.find(x=>x.id===editId);const was=b.status==='finished';
-    b.title=title;b.author=author;b.category=category;b.status=status;b.note=note;b.totalPages=totalPages;
+    b.title=title;b.author=author;b.category=category;b.status=status;b.note=note;b.totalPages=totalPages;b.updatedAt=Date.now();
     if(b.totalPages&&b.lastPage&&b.lastPage>b.totalPages)b.lastPage=b.totalPages;
     if(status==='finished'&&!was)b.finishedAt=todayStr();if(status!=='finished')b.finishedAt=null;}
-  else state.books.push({id:uid(),title,author,category,status,note,totalPages:totalPages,lastPage:0,finishedAt:status==='finished'?todayStr():null});
+  else state.books.push({id:uid(),title,author,category,status,note,totalPages:totalPages,lastPage:0,finishedAt:status==='finished'?todayStr():null,updatedAt:Date.now()});
   save();renderAll();closeModal();
   const after=snapshot();
   const nb=BADGES.filter(x=>badgeState(after)[x.id]&&!beforeBadge[x.id]);const nm=MAP.filter(x=>mapState(after)[x.id]&&!beforeMap[x.id]);const lu=after.lv.lv>before.lv.lv;
   if(lu||nb.length||nm.length){celebrate();toast(lu?'🎉 升级啦！成为 '+after.lv.name:nb.length?'🏅 解锁新徽章：'+nb.map(b=>b.icon+b.name).join(' '):'🗺️ 成长地图前进：'+nm.map(m=>m.icon+m.name).join(' '));}
   else toast(editId?'💾 已保存':'📚 已添加到书架');
 }
-function delBook(id){state.books=state.books.filter(b=>b.id!==id);save();renderAll();toast('🗑️ 已删除');}
+function delBook(id){
+  state.deleted=state.deleted||{books:{},checkins:{}};
+  const t=Date.now();
+  state.deleted.books[id]=t;                       // 记墓碑：删除随同步传播，其他设备拉取时真正移除
+  state.books=state.books.filter(b=>b.id!==id);
+  // 该书关联的打卡记录一并墓碑 + 移除（避免删除书籍后还残留阅读记录）
+  state.checkins.forEach(c=>{if(c.bookId===id)state.deleted.checkins[c.id]=t;});
+  state.checkins=state.checkins.filter(c=>c.bookId!==id);
+  save();renderAll();toast('🗑️ 已删除');
+}
 
 function finishBook(id){const b=state.books.find(x=>x.id===id);if(!b)return;
-  b.status='finished';b.finishedAt=todayStr();if(b.totalPages)b.lastPage=b.totalPages;
+  b.status='finished';b.finishedAt=todayStr();if(b.totalPages)b.lastPage=b.totalPages;b.updatedAt=Date.now();
   save();renderAll();openBookDetail(id);toast('🎉 《'+b.title+'》读完啦！');}
 function openBookDetail(id){const b=state.books.find(x=>x.id===id);if(!b)return;renderBookDetail(b);openModal('mBookDetail');}
 function renderBookDetail(b){
@@ -1237,7 +1283,7 @@ function onPhotoFile(e){
     img.src=r.result;};
   r.readAsDataURL(f);e.target.value='';
 }
-function clearPhoto(){pfPhoto=null;const p=document.getElementById('phPrev');
+function clearPhoto(){pfPhoto=null;explicitClearPhoto=true;state.child.updatedAt=Date.now();const p=document.getElementById('phPrev');
   if(p)p.innerHTML=state.child.avatar||'👧';toast('已切回表情头像');}
 function openProfile(isFirst){
   pfPick=state.child.avatar||'👧';
@@ -1266,6 +1312,7 @@ function saveProfile(){
   state.child.avatar=pfPick||'👧';
   state.child.photo=pfPhoto||null;
   state.child.setup=true;
+  state.child.updatedAt=Date.now();
   save();renderAll();closeModal();
   toast('🎉 欢迎你，'+name+'！');
 }
@@ -1335,7 +1382,7 @@ document.addEventListener('click',e=>{
       persist();                                    // 本地 IndexedDB / localStorage 落空
       if(_db){try{_db.transaction('audio','readwrite').objectStore('audio').clear();}catch(e){}} // 清掉本地语音库
       renderAll();toast('🧹 已清空全部数据');
-      if(SB&&fam){state.settings.familyCode=fam;doPush().finally(()=>{state.settings.familyCode=null;persist();});} // 用原 familyCode 把空状态推到云端，彻底清掉家庭共享记录
+      if(SB&&fam){state.settings.familyCode=fam;doPush(true).finally(()=>{state.settings.familyCode=null;persist();});} // 用原 familyCode 把空状态推到云端，彻底清掉家庭共享记录
     });break;
     case 'confirmOk':{const f=confirmCb;confirmCb=null;closeModal();if(f)f();}break;
     case 'confirmCancel':confirmCb=null;closeModal();break;
@@ -1362,11 +1409,14 @@ document.getElementById('photoFile').addEventListener('change',onPhotoFile);
   const saved=await loadState();
   if(saved)state=saved;
   if(!state.settings)state.settings={familyCode:null};
-  if(!state.child)state.child={name:'',age:6,avatar:'👧',setup:false};
-  save();renderAll();
+  if(!state.child)state.child={name:'',age:6,avatar:'👧',setup:false,updatedAt:0};
+  if(!state.deleted)state.deleted={books:{},checkins:{}};
+  if(saved)save();     // 仅当确有已加载的数据时才落稳（避免把空状态写回覆盖云端/本地）
+  renderAll();
+  // 已开启共享：先拉云端（把家人的小读者资料与数据合并到本机），再决定是否提示设置，避免重复弹窗
+  if(SB&&state.settings.familyCode){ await startSync(); }
   if(!state.child.setup)openProfile(true);            // 首次进入：先设置姓名与头像
   else if(SB&&!state.settings.familyCode)openFamily();
-  else if(SB)startSync();
 })();
 </script>
 </body>
