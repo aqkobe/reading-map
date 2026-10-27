@@ -344,7 +344,7 @@
     <!-- 成长地图 -->
     <section class="page" id="page-map">
       <div class="mapwrap">
-        <div class="maphead"><div class="t">🗺️ 阅读成长地图</div><div class="s">每读完一本书、每坚持一天，就向前走一步</div></div>
+        <div class="maphead"><div class="t">🗺️ 阅读成长地图</div><div class="s">每读完一本书、每坚持一天，就向前走一步 · <span id="mapCount">已点亮 0 / 21 站</span></div></div>
         <div class="path" id="mapPath"></div>
         <div class="island">🏝️</div>
       </div>
@@ -591,10 +591,18 @@ async function initSupabase(){
 }
 
 /* ===================== 数据层 ===================== */
+/* 10 级成长阶梯：门槛拉高，让升级成为长期目标（约 20 分钟/天 ≈ 10 分/天，满级约需 3~4 年） */
 const LEVELS=[
-  {lv:1,name:'阅读萌芽',min:0,max:99},{lv:2,name:'阅读起步',min:100,max:299},
-  {lv:3,name:'阅读达人',min:300,max:599},{lv:4,name:'阅读高手',min:600,max:999},
-  {lv:5,name:'阅读大师',min:1000,max:Infinity},
+  {lv:1,name:'阅读萌芽',min:0,max:99},
+  {lv:2,name:'阅读种子',min:100,max:299},
+  {lv:3,name:'阅读新芽',min:300,max:599},
+  {lv:4,name:'阅读小树',min:600,max:999},
+  {lv:5,name:'阅读大树',min:1000,max:1999},
+  {lv:6,name:'阅读森林',min:2000,max:3499},
+  {lv:7,name:'阅读高山',min:3500,max:5999},
+  {lv:8,name:'阅读大海',min:6000,max:9999},
+  {lv:9,name:'阅读星空',min:10000,max:17999},
+  {lv:10,name:'阅读宇宙',min:18000,max:Infinity},
 ];
 const GOAL=20, DURAS=[5,10,20,30,60], KEY='reading_growth_map_v2';
 
@@ -709,10 +717,25 @@ const BADGES=[
   {id:'weekfull',icon:'🌈',name:'一周全勤',desc:'本周 7 天全部打卡',test:s=>s.weekFull},
   {id:'expert',icon:'🏆',name:'阅读达人',desc:'积分达到 300 分',test:s=>s.points>=300},
   {id:'master',icon:'🎓',name:'阅读大师',desc:'积分达到 1000 分',test:s=>s.points>=1000},
+  {id:'sage',icon:'🌟',name:'阅读宗师',desc:'积分达到 3000 分',test:s=>s.points>=3000},
+  {id:'myth',icon:'👑',name:'阅读传奇',desc:'积分达到 10000 分',test:s=>s.points>=10000},
+  /* —— 进阶挑战徽章 —— */
+  {id:'streak100',icon:'💯',name:'百日坚持',desc:'连续阅读满 100 天',test:s=>s.maxStreak>=100},
+  {id:'books30',icon:'🏙️',name:'书山攀登者',desc:'累计读完 30 本书',test:s=>s.finished>=30},
+  {id:'books50',icon:'🏔️',name:'学富五车',desc:'累计读完 50 本书',test:s=>s.finished>=50},
+  {id:'min1000',icon:'🧭',name:'千分钟旅程',desc:'累计阅读满 1000 分钟',test:s=>s.total>=1000},
+  {id:'min3000',icon:'⛵',name:'远航水手',desc:'累计阅读满 3000 分钟',test:s=>s.total>=3000},
+  {id:'min10000',icon:'🚀',name:'万分钟阅读王',desc:'累计阅读满 10000 分钟',test:s=>s.total>=10000},
+  {id:'note10',icon:'📝',name:'灵感作家',desc:'写下 10 条读后感',test:s=>s.noteCount>=10},
+  {id:'audio10',icon:'📻',name:'电台主播',desc:'录下 10 段语音小记',test:s=>s.audioCount>=10},
+  {id:'goal10',icon:'🎪',name:'目标收割机',desc:'完成 10 次 20 分钟目标打卡',test:s=>s.goalCount>=10},
 ];
 function badgeState(s){const cs=state.checkins;
   const ext={...s,checkinsCount:cs.length,
     has60:cs.some(c=>c.minutes>=60),
+    noteCount:cs.filter(c=>(c.note||'').trim().length>0).length,
+    audioCount:cs.filter(c=>!!c.audio).length,
+    goalCount:cs.filter(c=>c.minutes>=GOAL).length,
     hasNote:cs.some(c=>(c.note||'').trim().length>0),
     hasAudio:cs.some(c=>!!c.audio),
     hasGoal:cs.some(c=>c.minutes>=GOAL),
@@ -721,20 +744,34 @@ function badgeState(s){const cs=state.checkins;
     weekFull:last7().arr.length===7&&last7().arr.every(x=>x.m>0)};
   const o={};BADGES.forEach(b=>o[b.id]=!!b.test(ext));return o;}
 const MAP=[
-  {id:'start',icon:'🌱',name:'阅读启程',desc:'完成第一次阅读打卡',test:s=>s.checkinsCount>0,target:1,cur:s=>s.checkinsCount,unit:'次'},
+  /* —— 启程·打卡 —— */
+  {id:'start',icon:'🌱',name:'阅读启程',desc:'完成第一次阅读打卡',test:s=>s.checkinsCount>=1,target:1,cur:s=>s.checkinsCount,unit:'次'},
+  {id:'c10',icon:'🍀',name:'十次足迹',desc:'累计打卡 10 次',test:s=>s.checkinsCount>=10,target:10,cur:s=>s.checkinsCount,unit:'次'},
+  {id:'c50',icon:'🌵',name:'五十次远行',desc:'累计打卡 50 次',test:s=>s.checkinsCount>=50,target:50,cur:s=>s.checkinsCount,unit:'次'},
+  /* —— 坚持·连续天数 —— */
   {id:'s7',icon:'🌿',name:'坚持 7 天',desc:'连续阅读满 7 天',test:s=>s.maxStreak>=7,target:7,cur:s=>s.maxStreak,unit:'天'},
   {id:'s30',icon:'⛰️',name:'坚持 30 天',desc:'连续阅读满 30 天',test:s=>s.maxStreak>=30,target:30,cur:s=>s.maxStreak,unit:'天'},
+  {id:'s100',icon:'💯',name:'百日长征',desc:'连续阅读满 100 天',test:s=>s.maxStreak>=100,target:100,cur:s=>s.maxStreak,unit:'天'},
+  /* —— 书本 —— */
+  {id:'b1',icon:'🌰',name:'第一本书',desc:'累计读完 1 本书',test:s=>s.finished>=1,target:1,cur:s=>s.finished,unit:'本'},
   {id:'b5',icon:'🌳',name:'读完 5 本书',desc:'累计读完 5 本书',test:s=>s.finished>=5,target:5,cur:s=>s.finished,unit:'本'},
   {id:'b20',icon:'🌋',name:'读完 20 本书',desc:'累计读完 20 本书',test:s=>s.finished>=20,target:20,cur:s=>s.finished,unit:'本'},
+  {id:'b50',icon:'🏔️',name:'读完 50 本书',desc:'累计读完 50 本书',test:s=>s.finished>=50,target:50,cur:s=>s.finished,unit:'本'},
+  /* —— 阅读时长 —— */
+  {id:'m100',icon:'🏕️',name:'阅读 100 分钟',desc:'累计阅读 100 分钟',test:s=>s.total>=100,target:100,cur:s=>s.total,unit:'分钟'},
   {id:'m500',icon:'🏝️',name:'阅读 500 分钟',desc:'累计阅读 500 分钟',test:s=>s.total>=500,target:500,cur:s=>s.total,unit:'分钟'},
   {id:'m1000',icon:'🌲',name:'阅读 1000 分钟',desc:'累计阅读 1000 分钟',test:s=>s.total>=1000,target:1000,cur:s=>s.total,unit:'分钟'},
   {id:'m5000',icon:'🗻',name:'阅读 5000 分钟',desc:'累计阅读 5000 分钟',test:s=>s.total>=5000,target:5000,cur:s=>s.total,unit:'分钟'},
-  {id:'voice',icon:'🎙️',name:'声音收藏站',desc:'录下 10 段语音小记',test:s=>s.audioCount>=10,target:10,cur:s=>s.audioCount,unit:'段'},
-  {id:'expert',icon:'🏔️',name:'阅读达人',desc:'积分达到 300 分',test:s=>s.points>=300,target:300,cur:s=>s.points,unit:'分'},
+  {id:'m10000',icon:'🚀',name:'万分钟飞行',desc:'累计阅读 10000 分钟',test:s=>s.total>=10000,target:10000,cur:s=>s.total,unit:'分钟'},
+  /* —— 积分·终极旅程 —— */
+  {id:'expert',icon:'🏵️',name:'阅读达人',desc:'积分达到 300 分',test:s=>s.points>=300,target:300,cur:s=>s.points,unit:'分'},
   {id:'master',icon:'🏆',name:'阅读大师',desc:'积分达到 1000 分',test:s=>s.points>=1000,target:1000,cur:s=>s.points,unit:'分'},
   {id:'legend',icon:'👑',name:'阅读宗师',desc:'积分达到 3000 分',test:s=>s.points>=3000,target:3000,cur:s=>s.points,unit:'分'},
+  {id:'star',icon:'🌟',name:'摘星之旅',desc:'积分达到 6000 分',test:s=>s.points>=6000,target:6000,cur:s=>s.points,unit:'分'},
+  {id:'galaxy',icon:'🌌',name:'穿越星河',desc:'积分达到 10000 分',test:s=>s.points>=10000,target:10000,cur:s=>s.points,unit:'分'},
+  {id:'cosmo',icon:'🪐',name:'宇宙尽头',desc:'积分达到 18000 分',test:s=>s.points>=18000,target:18000,cur:s=>s.points,unit:'分'},
 ];
-function mapExt(s){return {...s,checkinsCount:state.checkins.length,audioCount:state.checkins.filter(c=>c.audio).length};}
+function mapExt(s){return {...s,checkinsCount:state.checkins.length};}
 function mapState(s){const ext=mapExt(s);
   const o={};MAP.forEach(m=>o[m.id]=!!m.test(ext));return o;}
 
@@ -783,12 +820,14 @@ function renderHome(){
   renderToday();
 }
 function motivate(s){
+  if(s.points>=10000)return{em:'👑',tx:'你是阅读传奇，整个星空都在为你鼓掌！',hx:'每一本书都变成了你的翅膀'};
+  if(s.points>=3000)return{em:'🌟',tx:'你是阅读宗师，太了不起了！',hx:'坚持本身，就是最厉害的魔法'};
   if(s.points>=1000)return{em:'🎓',tx:'你是阅读大师啦，太了不起！',hx:'每一本书都变成了你的翅膀'};
   if(s.maxStreak>=7)return{em:'🎉',tx:'坚持一周，你真的很棒！',hx:'连续阅读 '+s.maxStreak+' 天，点亮了坚持徽章'};
   if(s.streak>=3)return{em:'🔥',tx:'已经连续阅读 '+s.streak+' 天啦！',hx:s.streak>=6?'再读 1 天就解锁「坚持7天」啦！':'继续加油，习惯正在长出来'};
   if(s.today>=GOAL)return{em:'🌟',tx:'今天的阅读目标完成啦！',hx:'给自己一个大大的赞'};
   if(s.finished>=1)return{em:'📚',tx:'一本书完成啦，继续下一段冒险！',hx:''};
-  const need=LEVELS[Math.min(s.lv.idx+1,4)].min-s.points;
+  const need=LEVELS[Math.min(s.lv.idx+1,LEVELS.length-1)].min-s.points;
   if(need<=40&&need>0)return{em:'⭐',tx:'再读一会儿，就可以升级啦！',hx:'还差 '+need+' 分就到下一等级'};
   return{em:'🌱',tx:'今天也迈出了第一步。',hx:''};
 }
@@ -836,6 +875,9 @@ function shade(hex){const m={'#ffd166':'#ffb703','#ff8fa3':'#ff6b8a','#34c8a0':'
 
 function renderMap(){
   const s=snapshot();const ms=mapState(s);const ext=mapExt(s);const path=document.getElementById('mapPath');path.innerHTML='';
+  const litCnt=MAP.filter(m=>ms[m.id]).length;
+  const mc=document.getElementById('mapCount');
+  if(mc)mc.textContent='已点亮 '+litCnt+' / '+MAP.length+' 站';
   MAP.forEach(m=>{const on=ms[m.id];
     const cur=Math.max(0,Math.min(m.cur(ext),m.target));
     const pct=Math.min(100,Math.round(cur/m.target*100));
