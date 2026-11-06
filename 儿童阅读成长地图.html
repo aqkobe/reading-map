@@ -391,7 +391,7 @@
         <input type="file" id="importFile" accept="application/json" style="display:none" />
       </div>
       <div class="cheer" style="margin-top:14px;">
-        <div class="em">⭐</div>
+        <div class="em" id="reportCheerEm">⭐</div>
         <div><div class="tx" id="reportCheer">每一次翻开书，都是在长大。</div></div>
       </div>
     </section>
@@ -508,6 +508,19 @@
     <div class="minirow" style="justify-content:center;gap:10px;margin-top:18px;">
       <button class="btn ghost" data-act="confirmCancel">取消</button>
       <button class="btn danger" data-act="confirmOk">确定清空</button>
+    </div>
+  </div>
+</div>
+
+<!-- 每日鼓励弹窗：每天第一次打开弹出 -->
+<div class="modal" id="mDaily">
+  <div class="mask" data-act="closeModal"></div>
+  <div class="sheet confirm">
+    <div class="warn-emoji" id="dailyEm" style="font-size:56px">🌟</div>
+    <h3>今日阅读寄语</h3>
+    <div class="desc" id="dailyMsg"></div>
+    <div class="minirow" style="justify-content:center;margin-top:18px;">
+      <button class="btn" data-act="closeModal">收到，开始阅读！</button>
     </div>
   </div>
 </div>
@@ -723,8 +736,15 @@ const BADGES=[
   {id:'streak100',icon:'💯',name:'百日坚持',desc:'连续阅读满 100 天',test:s=>s.maxStreak>=100},
   {id:'books30',icon:'🏙️',name:'书山攀登者',desc:'累计读完 30 本书',test:s=>s.finished>=30},
   {id:'books50',icon:'🏔️',name:'学富五车',desc:'累计读完 50 本书',test:s=>s.finished>=50},
+  {id:'books60',icon:'🎠',name:'六十本书',desc:'累计读完 60 本书',test:s=>s.finished>=60},
+  {id:'books80',icon:'🎡',name:'八十本书',desc:'累计读完 80 本书',test:s=>s.finished>=80},
+  {id:'books100',icon:'🏯',name:'百本珍藏',desc:'累计读完 100 本书',test:s=>s.finished>=100},
+  {id:'books150',icon:'🏰',name:'一百五十本',desc:'累计读完 150 本书',test:s=>s.finished>=150},
+  {id:'books200',icon:'🐉',name:'两百本传家',desc:'累计读完 200 本书',test:s=>s.finished>=200},
   {id:'min1000',icon:'🧭',name:'千分钟旅程',desc:'累计阅读满 1000 分钟',test:s=>s.total>=1000},
+  {id:'min2000',icon:'🛶',name:'扬帆远航',desc:'累计阅读满 2000 分钟',test:s=>s.total>=2000},
   {id:'min3000',icon:'⛵',name:'远航水手',desc:'累计阅读满 3000 分钟',test:s=>s.total>=3000},
+  {id:'min4000',icon:'🌊',name:'破浪前行',desc:'累计阅读满 4000 分钟',test:s=>s.total>=4000},
   {id:'min10000',icon:'🚀',name:'万分钟阅读王',desc:'累计阅读满 10000 分钟',test:s=>s.total>=10000},
   {id:'note10',icon:'📝',name:'灵感作家',desc:'写下 10 条读后感',test:s=>s.noteCount>=10},
   {id:'audio10',icon:'📻',name:'电台主播',desc:'录下 10 段语音小记',test:s=>s.audioCount>=10},
@@ -830,6 +850,45 @@ function motivate(s){
   const need=LEVELS[Math.min(s.lv.idx+1,LEVELS.length-1)].min-s.points;
   if(need<=40&&need>0)return{em:'⭐',tx:'再读一会儿，就可以升级啦！',hx:'还差 '+need+' 分就到下一等级'};
   return{em:'🌱',tx:'今天也迈出了第一步。',hx:''};
+}
+
+/* —— 每日鼓励寄语：同一天固定同一条，第二天自动换新 —— */
+const CHEERS=[
+  {em:'🌟',tx:'每一次翻开书，都是一次小小的冒险！'},
+  {em:'📖',tx:'今天的故事，正等着你去发现呢！'},
+  {em:'🚀',tx:'读的书越多，你的小宇宙就越大！'},
+  {em:'🌈',tx:'坚持阅读的你，比彩虹还耀眼！'},
+  {em:'🦁',tx:'勇敢的小读者，今天读点什么好呢？'},
+  {em:'🍎',tx:'每天读一点点，智慧就像苹果一样甜！'},
+  {em:'⭐',tx:'你读过的每一页，都会变成星星照亮你！'},
+  {em:'🐢',tx:'慢慢读也没关系，重要的是今天没有停下来！'},
+  {em:'🎈',tx:'带上好奇心，一起去书里旅行吧！'},
+  {em:'🦋',tx:'书里藏着好多蝴蝶，等你翻页放飞它们！'},
+  {em:'🌱',tx:'阅读的小树苗，每天都在悄悄长高！'},
+  {em:'🏰',tx:'每本书都是一块砖，帮你砌成梦想城堡！'},
+  {em:'🐳',tx:'深潜进书里吧，说不定能遇见大蓝鲸！'},
+  {em:'🔭',tx:'用书做望远镜，能看到更远的世界！'},
+  {em:'🍰',tx:'今天也要给大脑喂一块「故事蛋糕」哦！'},
+  {em:'🦸',tx:'爱读书的孩子，自带超能力！'},
+  {em:'🎵',tx:'读一本好书，就像听了一首好听的歌！'},
+  {em:'☀️',tx:'新的一天，从一段好故事开始吧！'},
+];
+function dailyCheer(){ // 用日期字符串做种子：当天任何时候打开都是同一句，明天自动换
+  const key=todayStr();
+  let h=0;for(let i=0;i<key.length;i++)h=(h*31+key.charCodeAt(i))>>>0;
+  return CHEERS[h%CHEERS.length];
+}
+function maybeDailyCheer(){ // 每天第一次打开 app 弹出鼓励弹窗（按本机每天只弹一次）
+  try{
+    const key='rgm_daily_cheer',today=todayStr();
+    if(localStorage.getItem(key)===today)return;
+    localStorage.setItem(key,today);
+    const c=dailyCheer();
+    const em=document.getElementById('dailyEm'),msg=document.getElementById('dailyMsg');
+    if(em)em.textContent=c.em;
+    if(msg)msg.textContent=c.tx;
+    setTimeout(()=>openModal('mDaily'),400); // 稍等页面渲染完再弹，避免被首屏动画盖住
+  }catch(e){}
 }
 function audioTag(a){if(!a)return '';return '<audio controls preload="none" src="data:'+a.mime+';base64,'+a.b64+'"></audio>';}
 function renderToday(){
@@ -945,7 +1004,9 @@ function renderReport(){
       '<div class="cx"><div class="cn">'+(esc(c.note)||'读了 '+c.minutes+' 分钟')+'</div><div class="ct">'+tl+' · '+(book?'📖 '+book.title:'未关联书籍')+
       (c.pageEnd?' · 读到第 '+c.pageEnd+' 页':'')+(c.audio?' · 🎙️':'')+'</div></div>'+audioTag(c.audio)+'</div>';
   }).join('')+'</div>';
-  document.getElementById('reportCheer').textContent=motivate(s).tx;
+  const dc=dailyCheer(); // 报告底部：每日随机鼓励语（当天固定，跨天更换）
+  const rce=document.getElementById('reportCheerEm');if(rce)rce.textContent=dc.em;
+  document.getElementById('reportCheer').textContent=dc.tx;
   renderSyncBox();
 }
 function renderSyncBox(){
@@ -975,18 +1036,24 @@ function renderBadges(){
 function renderAll(){renderHome();renderBooks();renderMap();renderReport();renderBadges();}
 
 /* ===================== 云端同步 ===================== */
-let lastPullAt=0, pushTimer=null, syncState='syn', syncLabel='同步中…', explicitClearPhoto=false, syncPolling=false;
+let lastSeenUpdatedAt=null, pushTimer=null, syncState='syn', syncLabel='同步中…', explicitClearPhoto=false, syncPolling=false;
 function setSync(st,label){syncState=st;if(label)syncLabel=label;const d=document.getElementById('syncDot');if(d){d.className='syncdot '+st;d.textContent=label;}}
 function schedulePush(){if(!SB||!state.settings.familyCode)return;clearTimeout(pushTimer);pushTimer=setTimeout(doPush,800);}
 async function doPush(force){if(!SB||!state.settings.familyCode)return;
   setSync('syn','同步中…');
   const ts=new Date().toISOString();
   // 读-改-写：先把云端已有数据合并进本机，保证多端写入时云端始终保留「并集」，不会互相覆盖
-  let remote=null,remotePhoto=null;
+  let remote=null,remotePhoto=null,readFail=false;
   if(!force){
-    try{const {data}=await SB.from('reading_state').select('*').eq('family_id',state.settings.familyCode).maybeSingle();
-      if(data&&data.data){remote=data.data;if(data.data.child)remotePhoto=data.data.child.photo;}}catch(e){}
+    try{const {data,error}=await SB.from('reading_state').select('*').eq('family_id',state.settings.familyCode).maybeSingle();
+      if(error)readFail=true;
+      else if(data&&data.data){remote=data.data;if(data.data.child)remotePhoto=data.data.child.photo;}}catch(e){readFail=true;}
+    // 关键防护①：推送前读取云端失败 → 本次绝不推送（旧代码把失败当「云端没数据」，导致空数据覆盖云端）
+    if(readFail){setSync('err','同步失败');console.warn('推送前读取云端失败，本次跳过推送，稍后自动重试');return;}
     if(remote){mergeRemote(remote);await persist();renderAll();}
+    // 关键防护②：本机什么都没有而云端有数据（典型：新设备刚输入共享码）→ 只拉不推，绝不用空数据覆盖全家数据
+    const localEmpty=!(state.books.length||state.checkins.length||(state.child&&state.child.setup));
+    if(remote&&localEmpty){setSync('ok','☁️ 已拉取云端数据');return;}
   }
   // 保护共享头像：本机没有照片且非用户主动清除时，沿用云端已有照片，避免把家庭共享头像清掉
   let childToPush=state.child;
@@ -996,19 +1063,46 @@ async function doPush(force){if(!SB||!state.settings.familyCode)return;
     data:{child:childToPush,books:state.books,deleted:state.deleted||{books:{},checkins:{}},
       checkins:state.checkins.map(c=>({...c,audio:null}))}, // 录音只存本机，不上传云端
     updated_at:ts};
-  const {error}=await SB.from('reading_state').upsert(row,{onConflict:'family_id'});
+  // 弱网/地铁/切网时单次请求容易失败：自动重试最多 3 次（间隔 2s/4s），失败才提示
+  let error=null;
+  for(let i=0;i<3;i++){
+    try{const r=await SB.from('reading_state').upsert(row,{onConflict:'family_id'});error=r.error;}
+    catch(e){error=e;console.warn('云同步第'+(i+1)+'次网络异常:',e&&e.message||e);warnBlockedOnce();}
+    if(!error)break;
+    if(i<2)await new Promise(res=>setTimeout(res,(i+1)*2000));
+  }
   if(error){setSync('err','同步失败');console.warn(error);}
-  else{lastPullAt=new Date(ts).getTime();setSync('ok','已同步 ☁️');} // 标记为自己刚推的，抑制回显渲染
+  else{lastSeenUpdatedAt=ts;setSync('ok','已同步 ☁️');} // 记录自己刚写的时间串，抑制回显渲染
 }
-async function doPull(){if(!SB||!state.settings.familyCode)return;
-  const {data,error}=await SB.from('reading_state').select('*').eq('family_id',state.settings.familyCode).maybeSingle();
-  if(error||!data)return;
-  const rt=new Date(data.updated_at).getTime();
-  if(rt<=lastPullAt)return;
-  mergeRemote(data.data||{});lastPullAt=rt;await persist();renderAll();
-  toast('☁️ 已同步家人更新');
+let syncBlockedWarned=false;
+function warnBlockedOnce(){ // 本地预览服务可能带 CSP connect-src 白名单（不含 supabase），浏览器会拦截全部同步请求
+  if(syncBlockedWarned)return;syncBlockedWarned=true;
+  if(location.hostname==='127.0.0.1'||location.hostname==='localhost'){
+    console.warn('当前是本地预览环境，CSP 限制了到 Supabase 的联网请求。请直接双击打开 HTML 文件（file://）或使用正式部署链接，同步即可正常。');
+    toast('⚠️ 预览环境拦截了联网，请直接打开 HTML 文件或用正式链接');}}
+async function doPull(){if(!SB||!state.settings.familyCode)return false;
+  let data=null;
+  try{const r=await SB.from('reading_state').select('*').eq('family_id',state.settings.familyCode).maybeSingle();
+    if(r.error){setSync('err','同步失败');console.warn('拉取云端失败:',r.error.message||r.error);return false;}
+    data=r.data;
+  }catch(e){ // 网络级异常（断网/超时/被 CSP 拦截）：请求根本没成功，也如实报失败
+    setSync('err','同步失败');console.warn('拉取云端网络异常:',e&&e.message||e);warnBlockedOnce();return false;}
+  if(!data)return true; // 云端还没有该共享码的行（全新家庭），正常
+  // 关键防护③自愈：云端是空的而本机有数据（说明曾被某台设备用空数据覆盖过）→ 立即推送恢复云端
+  const rd=data.data||{};
+  const remoteEmpty=!(rd.books&&rd.books.length)&&!(rd.checkins&&rd.checkins.length)&&!(rd.child&&rd.child.setup);
+  const localHas=state.books.length||state.checkins.length||(state.child&&state.child.setup);
+  if(remoteEmpty&&localHas){schedulePush();return true;}
+  // 关键修复：不再比较「时间先后」——各手机时钟不一致时，时钟快的设备写的时间戳会永久压住
+  // 其他设备后续写入，导致对方数据被当成"旧的"跳过。改为：updated_at 字符串变了就合并
+  // （mergeRemote 是按 id+updatedAt 的并集合并，重复执行幂等安全）。
+  if(!data.updated_at||data.updated_at===lastSeenUpdatedAt)return true;
+  lastSeenUpdatedAt=data.updated_at;
+  if(mergeRemote(rd)){await persist();renderAll();toast('☁️ 已同步家人更新');}
+  return true;
 }
 function mergeRemote(rd){
+  const before=JSON.stringify([state.books,state.checkins,state.child,state.deleted]);
   // 合并删除墓碑：取并集，时间戳取较大者（保证一端删除能传播到另一端）
   state.deleted=state.deleted||{books:{},checkins:{}};
   if(rd.deleted){for(const k of ['books','checkins']){const rm=rd.deleted[k]||{};const lm=state.deleted[k]||{};
@@ -1030,6 +1124,7 @@ function mergeRemote(rd){
       if(!m.photo&&state.child&&state.child.photo)m.photo=state.child.photo;
       state.child=m;}
   }
+  return JSON.stringify([state.books,state.checkins,state.child,state.deleted])!==before;
 }
 let syncBound=false;
 function bindSync(){if(!SB||!state.settings.familyCode||syncBound)return;syncBound=true;
@@ -1039,8 +1134,12 @@ function bindSync(){if(!SB||!state.settings.familyCode||syncBound)return;syncBou
 }
 async function startSync(){if(!SB)return;bindSync();
   // 定时轮询作为实时订阅的兜底：即便 Supabase Realtime 未开启该表，也能定期拉取家人更新
-  if(!syncPolling){syncPolling=true;setInterval(()=>{if(state.settings.familyCode)doPull();},15000);}
-  await doPull();setSync('ok','已同步 ☁️');}
+  if(!syncPolling){syncPolling=true;
+    setInterval(()=>{if(state.settings.familyCode)doPull();},15000);
+    // 切回前台立刻拉一次：不用等 15 秒轮询，B 手机打开 app 就能看到家人最新数据
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden&&state.settings.familyCode)doPull();});}
+  const ok=await doPull();
+  setSync(ok===false?'err':'ok',ok===false?'同步失败，稍后自动重试':'已同步 ☁️');}
 
 /* ===================== 交互 ===================== */
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2200);}
@@ -1069,10 +1168,20 @@ function openCheckin(preset,customMinutes,bookId){
       box.innerHTML='<label>'+label+'</label><select id="checkinBook"></select>';const s=document.getElementById('checkinBook');
       if(reading){const o=document.createElement('option');o.value=reading.id;o.textContent=reading.title+' · 正在读';s.appendChild(o);}
       else{const order={reading:0,want:1,finished:2};
-        state.books.slice().sort((a,b)=>((order[a.status]??3)-(order[b.status]??3))).forEach(b=>{const o=document.createElement('option');o.value=b.id;
-          const tag={reading:' · 正在读',want:' · 想读',finished:' · 已读完'}[b.status]||'';o.textContent=b.title+tag;s.appendChild(o);});}
-      const def=bookId||(reading||state.books[0]).id;
-      s.value=def;}}
+        state.books.slice().sort((a,b)=>{
+          const d=(order[a.status]??3)-(order[b.status]??3);
+          if(d)return d;
+          if(a.status==='finished'){ // 已读完的：按读完日期降序，最近读完的在前，最早读的排最后
+            const fa=a.finishedAt||'',fb=b.finishedAt||'';
+            if(fa!==fb)return fa<fb?1:-1;
+            return (b.updatedAt||0)-(a.updatedAt||0);}
+          return 0;}).forEach(b=>{const o=document.createElement('option');o.value=b.id;
+        const tag={reading:' · 正在读',want:' · 想读',finished:' · 已读完'}[b.status]||'';o.textContent=b.title+tag;s.appendChild(o);});}
+      const sel=document.getElementById('checkinBook');
+      if(reading){sel.value=reading.id;} // 正在读的书自动锁定
+      else{ // 没有「正在读」时不预选任何书，必须手动选择，避免习惯性默认到第一本
+        const ph=document.createElement('option');ph.value='';ph.textContent='请选择一本书';
+        sel.insertBefore(ph,sel.firstChild);sel.value=bookId||'';}}}
   const book=currentCheckinBook()||state.books[0];
   const desc=document.getElementById('checkinDesc');if(desc)desc.textContent=book?'正在为《'+book.title+'》记录阅读，今天读了多久呀？':'今天读了多久呀？选一个时间吧～';
   const fchk=document.getElementById('finishBookChk');if(fchk)fchk.checked=false;
@@ -1207,6 +1316,15 @@ function delBook(id){
   save();renderAll();toast('🗑️ 已删除');
 }
 
+function delCheckin(id){
+  state.deleted=state.deleted||{books:{},checkins:{}};
+  state.deleted.checkins[id]=Date.now();           // 墓碑：删除随同步传播，其他设备拉取时真正移除
+  const c=state.checkins.find(x=>x.id===id);
+  state.checkins=state.checkins.filter(x=>x.id!==id);
+  if(c&&c.audio&&_db){try{_db.transaction('audio','readwrite').objectStore('audio').delete(id);}catch(e){}} // 本地语音一并清除
+  save();renderAll();toast('🗑️ 已删除该条阅读记录');
+}
+
 function finishBook(id){const b=state.books.find(x=>x.id===id);if(!b)return;
   b.status='finished';b.finishedAt=todayStr();if(b.totalPages)b.lastPage=b.totalPages;b.updatedAt=Date.now();
   save();renderAll();openBookDetail(id);toast('🎉 《'+b.title+'》读完啦！');}
@@ -1226,7 +1344,8 @@ function renderBookDetail(b){
     const pg=c.pageEnd?'<div class="pages">读到第 '+c.pageEnd+' 页'+(c.pages?'（本次 +'+c.pages+' 页）':'')+'</div>':'';
     return '<div class="btline"><div class="tt">'+tl+'</div><div class="tc"><div class="min">'+c.minutes+' 分钟</div>'+
       (c.note?'<div class="note">'+esc(c.note)+'</div>':'')+pg+
-      (c.audio?'<div style="margin-top:6px">'+audioTag(c.audio)+'</div>':'')+'</div></div>';
+      (c.audio?'<div style="margin-top:6px">'+audioTag(c.audio)+'</div>':'')+
+      '<button class="mini del" data-act="delCheckin" data-id="'+c.id+'" data-bid="'+b.id+'" style="margin-top:6px" title="删除这条记录">🗑️</button></div></div>';
   }).join('')+'</div>';
   document.getElementById('bookDetailBody').innerHTML=
     '<div class="bdetail">'+
@@ -1274,7 +1393,11 @@ async function createFamily(){const code=(document.getElementById('familyInput')
   state.settings.familyCode=code;save();closeModal();await startSync();toast('☁️ 共享码 '+code+' 已开启');}
 async function joinFamily(){const code=(document.getElementById('familyInput').value||'').trim().toUpperCase();
   if(!code){toast('请输入共享码');return;}
-  state.settings.familyCode=code;save();closeModal();await doPull();await startSync();renderAll();toast('🔑 已加入共享 '+code);}
+  state.settings.familyCode=code;closeModal();
+  const ok=await doPull();   // 关键：先把云端数据拉进本机，再落盘/安排推送（推送的才是并集）
+  save();
+  await startSync();renderAll();
+  toast('🔑 已加入共享 '+code+(state.books.length||state.checkins.length?'':' ⚠️ 云端暂无数据'));}
 function exitFamily(){state.settings.familyCode=null;save();renderAll();toast('已退出家庭共享（本机数据保留）');}
 function copyCode(){const code=state.settings.familyCode;if(!code)return;
   if(navigator.clipboard)navigator.clipboard.writeText(code);toast('已复制共享码：'+code);}
@@ -1396,6 +1519,9 @@ document.addEventListener('click',e=>{
     case 'editBook':openBook(t.getAttribute('data-id'));break;
     case 'finishBook':finishBook(t.getAttribute('data-id'));break;
     case 'delBook':delBook(t.getAttribute('data-id'));break;
+    case 'delCheckin':{const cid=t.getAttribute('data-id'),bid=t.getAttribute('data-bid');
+      showConfirm('删除这条阅读记录','删除后所有手机都会同步移除这条记录（含读后感），确定吗？',()=>{
+        delCheckin(cid);openBookDetail(bid);});}break;
     case 'setBookStatus':setBookStatusSeg(t.getAttribute('data-value'));break;
     case 'saveBook':saveBook();break;
     case 'deleteBook':if(editId)delBook(editId);closeModal();break;
@@ -1458,7 +1584,8 @@ document.getElementById('photoFile').addEventListener('change',onPhotoFile);
   // 已开启共享：先拉云端（把家人的小读者资料与数据合并到本机），再决定是否提示设置，避免重复弹窗
   if(SB&&state.settings.familyCode){ await startSync(); }
   if(!state.child.setup)openProfile(true);            // 首次进入：先设置姓名与头像
-  else if(SB&&!state.settings.familyCode)openFamily();
+  else{maybeDailyCheer();                             // 每天第一次打开：弹出今日鼓励寄语
+    if(SB&&!state.settings.familyCode)openFamily();}
 })();
 </script>
 </body>
