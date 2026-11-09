@@ -167,6 +167,28 @@
   .col .v{font-size:10.5px;font-weight:800;color:var(--ink-soft);}
   .col .d{font-size:11px;font-weight:800;color:var(--ink-soft);}
   .col.today .d{color:var(--green-d);}
+  /* 趋势周期切换 */
+  .segbar{display:flex;gap:5px;margin-left:auto;}
+  .segbtn{border:none;background:#eef3f8;border-radius:999px;padding:4px 11px;font-size:11.5px;font-weight:800;color:var(--ink-soft);cursor:pointer;font-family:inherit;transition:all .15s;}
+  .segbtn.on{background:linear-gradient(90deg,var(--sun),var(--coral));color:#fff;box-shadow:0 3px 8px rgba(255,150,120,.35);}
+  .chart.mon{gap:2px;}
+  .chart.mon .col{gap:3px;}
+  .chart.mon .col .v{font-size:8.5px;}
+  .chart.mon .col .d{font-size:8.5px;}
+  .chart.mon .col .bar{border-radius:4px 4px 2px 2px;}
+  /* 阅读日历 */
+  .calhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .calnav{display:flex;align-items:center;gap:6px;font-weight:900;font-size:13.5px;color:var(--ink);}
+  .calnav button{padding:3px 12px;font-size:15px;line-height:1.3;}
+  .calgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+  .cw{font-size:10.5px;font-weight:800;color:var(--ink-soft);text-align:center;padding:3px 0;}
+  .cday{aspect-ratio:1;border-radius:10px;background:#f2f6fa;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;color:var(--ink-soft);cursor:pointer;transition:transform .12s;padding:1px;min-height:34px;}
+  .cday:active{transform:scale(.92);}
+  .cday .cm{font-size:9px;font-weight:900;color:var(--coral-d);margin-top:1px;white-space:nowrap;}
+  .cday.has{background:linear-gradient(160deg,#fff3e8,#ffe0cf);color:var(--ink);box-shadow:0 2px 6px rgba(255,150,120,.22);}
+  .cday.today{outline:2.5px solid var(--green);outline-offset:-1px;}
+  .cday.empty{background:transparent;cursor:default;}
+  .calhint{font-size:11.5px;font-weight:700;color:var(--ink-soft);margin-top:9px;text-align:center;}
   .clist{display:flex;flex-direction:column;gap:10px;}
   .citem{display:flex;gap:10px;align-items:center;background:#fafcff;border-radius:14px;padding:11px 13px;box-shadow:var(--shadow-sm);}
   .citem .cm{font-size:18px;font-weight:900;color:var(--green-d);white-space:nowrap;}
@@ -368,8 +390,26 @@
       <div class="topbar"><div class="hi">📊 阅读报告</div></div>
       <div class="report-stats" id="reportStats"></div>
       <div class="card chartcard">
-        <div class="ttl">📈 本周阅读趋势 · 周一 ~ 周日</div>
+        <div class="ttl" style="flex-wrap:wrap;row-gap:8px;">📈 <span id="trendTitle">本周阅读趋势</span>
+          <span class="segbar">
+            <button class="segbtn on" data-act="trendWeek" id="segWeek">本周</button>
+            <button class="segbtn" data-act="trendMonth" id="segMonth">本月</button>
+            <button class="segbtn" data-act="trendLast" id="segLast">上月</button>
+          </span>
+        </div>
         <div class="chart" id="chart"></div>
+      </div>
+      <div class="card">
+        <div class="calhead">
+          <div class="sec-ttl">🗓️ 阅读日历</div>
+          <div class="calnav">
+            <button class="btn ghost" data-act="calPrev">‹</button>
+            <span id="calTitle"></span>
+            <button class="btn ghost" data-act="calNext">›</button>
+          </div>
+        </div>
+        <div class="calgrid" id="calGrid"></div>
+        <div class="calhint">👆 点某一天，看那天读了哪本书、读了多久</div>
       </div>
       <div class="card">
         <div class="sec-ttl">📝 最近打卡</div>
@@ -495,6 +535,17 @@
   <div class="sheet">
     <button class="closex" data-act="closeModal">✕</button>
     <div id="bookDetailBody"></div>
+  </div>
+</div>
+
+<!-- 某天阅读详情弹窗 -->
+<div class="modal" id="mDay">
+  <div class="mask" data-act="closeModal"></div>
+  <div class="sheet">
+    <button class="closex" data-act="closeModal">✕</button>
+    <h3 id="dayTitle" style="font-size:19px;font-weight:900;">这一天</h3>
+    <div class="desc" id="daySub" style="font-size:13px;color:var(--ink-soft);font-weight:700;margin-top:4px;"></div>
+    <div id="dayList" style="margin-top:14px;"></div>
   </div>
 </div>
 
@@ -840,9 +891,9 @@ function renderHome(){
   renderToday();
 }
 function motivate(s){
-  // 高分段文案跟随实际等级名（10 级体系），不再写死旧称号
-  if(s.lv.idx>=LEVELS.length-1)return{em:'👑',tx:'你已经是「阅读宇宙」啦！整个星空都在为你鼓掌！',hx:'每一本书都变成了你的翅膀'};
-  if(s.points>=1000)return{em:'🎓',tx:'你是「'+s.lv.name+'」啦，太了不起！',hx:'每一本书都变成了你的翅膀'};
+  // 高分段文案跟随实际等级名（10 级体系），不再写死旧称号；副语每日随机
+  if(s.lv.idx>=LEVELS.length-1)return{em:'👑',tx:'你已经是「阅读宇宙」啦！整个星空都在为你鼓掌！',hx:homeSub()};
+  if(s.points>=1000)return{em:'🎓',tx:'你是「'+s.lv.name+'」啦，太了不起！',hx:homeSub()};
   if(s.maxStreak>=7)return{em:'🎉',tx:'坚持一周，你真的很棒！',hx:'连续阅读 '+s.maxStreak+' 天，点亮了坚持徽章'};
   if(s.streak>=3)return{em:'🔥',tx:'已经连续阅读 '+s.streak+' 天啦！',hx:s.streak>=6?'再读 1 天就解锁「坚持7天」啦！':'继续加油，习惯正在长出来'};
   if(s.today>=GOAL)return{em:'🌟',tx:'今天的阅读目标完成啦！',hx:'给自己一个大大的赞'};
@@ -878,6 +929,24 @@ function dailyCheer(){ // 用日期字符串做种子：当天任何时候打开
   let h=0;for(let i=0;i<key.length;i++)h=(h*31+key.charCodeAt(i))>>>0;
   return CHEERS[h%CHEERS.length];
 }
+/* 首页激励副语池：与报告页寄语分开，同日固定、跨天更换 */
+const HXPOOL=[
+  '每一本书都变成了你的翅膀',
+  '书页翻动的声音，就是成长的声音',
+  '你攒下的每一分钟，都在悄悄发光',
+  '读过的每一个字，都会变成脚下的路',
+  '故事里的朋友，正等着你明天回来',
+  '认真读书的你，比星星还闪',
+  '书是最甜的果实，要慢慢品尝呀',
+  '每翻一页，你的世界就变大一点点',
+  '坚持的小种子，已经悄悄发芽啦',
+  '书山再高，你走的每一步都算数',
+  '今天的你，比昨天更博学了一点点',
+  '你的小书架上，正堆满宝藏',
+  '故事吃多了，想象力就会长出翅膀',
+  '明天的故事，也在等你去发现哦',
+];
+function homeSub(){const key='hx'+todayStr();let h=0;for(let i=0;i<key.length;i++)h=(h*31+key.charCodeAt(i))>>>0;return HXPOOL[h%HXPOOL.length];}
 function maybeDailyCheer(){ // 每天第一次打开 app 弹出鼓励弹窗（按本机每天只弹一次）
   try{
     const key='rgm_daily_cheer',today=todayStr();
@@ -972,6 +1041,82 @@ function last7(){ // 自然周：周一 → 周日，符合日历习惯
     const m=state.checkins.filter(c=>c.date===key).reduce((a,c)=>a+c.minutes,0);sum+=m;
     arr.push({key,m,label:['一','二','三','四','五','六','日'][i],isToday:key===today});}
   return {arr,min:sum};}
+
+/* —— 趋势图周期切换：本周 / 本月 / 上月 —— */
+let trendMode='week';
+function prevYM(ym){const p=ym.split('-').map(Number);return p[1]===1?(p[0]-1)+'-12':p[0]+'-'+pad(p[1]-1);}
+function monthArr(ym){ // 'YYYY-MM' → 该月每天的阅读分钟数组
+  const p=ym.split('-').map(Number);
+  const days=new Date(p[0],p[1],0).getDate();
+  const today=todayStr();const arr=[];let sum=0;
+  for(let i=1;i<=days;i++){const key=ym+'-'+pad(i);
+    const mi=state.checkins.filter(c=>c.date===key).reduce((a,c)=>a+c.minutes,0);sum+=mi;
+    arr.push({key,m:mi,label:String(i),isToday:key===today});}
+  return {arr,sum};
+}
+function renderTrend(){
+  const chart=document.getElementById('chart');if(!chart)return;
+  const title=document.getElementById('trendTitle');
+  ['segWeek','segMonth','segLast'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.remove('on');});
+  let arr;
+  if(trendMode==='week'){
+    const w=last7();arr=w.arr;
+    if(title)title.textContent='📈 本周阅读趋势 · 共 '+w.min+' 分钟';
+    const el=document.getElementById('segWeek');if(el)el.classList.add('on');
+    chart.classList.remove('mon');
+  }else{
+    const ym=todayStr().slice(0,7);const target=trendMode==='month'?ym:prevYM(ym);
+    const mo=monthArr(target);arr=mo.arr;
+    if(title)title.textContent='📈 '+(trendMode==='month'?'本月':'上月')+'阅读趋势 · 共 '+mo.sum+' 分钟';
+    const el=document.getElementById(trendMode==='month'?'segMonth':'segLast');if(el)el.classList.add('on');
+    chart.classList.add('mon');
+  }
+  const maxV=Math.max(10,...arr.map(x=>x.m));chart.innerHTML='';
+  arr.forEach(x=>{const col=document.createElement('div');col.className='col'+(x.isToday?' today':'');
+    const h=Math.max(4,Math.round(x.m/maxV*100));
+    col.innerHTML='<div class="v">'+(x.m||'')+'</div><div class="bar" style="height:0%"></div><div class="d">'+x.label+'</div>';
+    chart.appendChild(col);requestAnimationFrame(()=>{col.querySelector('.bar').style.height=h+'%';});});
+}
+
+/* —— 阅读日历：按天展示读了什么 —— */
+let calYM=todayStr().slice(0,7); // 默认当月，可左右翻
+function renderCalendar(){
+  const grid=document.getElementById('calGrid');if(!grid)return;
+  const p=calYM.split('-').map(Number);
+  const title=document.getElementById('calTitle');if(title)title.textContent=p[0]+'年'+p[1]+'月';
+  const days=new Date(p[0],p[1],0).getDate();
+  const fd=new Date(p[0],p[1]-1,1).getDay();const off=fd===0?6:fd-1; // 周一为第一列
+  const today=todayStr();
+  let html='';['一','二','三','四','五','六','日'].forEach(w=>html+='<div class="cw">'+w+'</div>');
+  for(let i=0;i<off;i++)html+='<div class="cday empty"></div>';
+  for(let i=1;i<=days;i++){const key=calYM+'-'+pad(i);
+    const mi=state.checkins.filter(c=>c.date===key).reduce((a,c)=>a+c.minutes,0);
+    html+='<div class="cday'+(mi>0?' has':'')+(key===today?' today':'')+'" data-act="dayOpen" data-date="'+key+'" title="'+mi+' 分钟">'+
+      '<div>'+i+'</div>'+(mi>0?'<div class="cm">'+mi+'分</div>':'')+'</div>';}
+  grid.innerHTML=html;
+}
+function calShift(d){
+  const cur=todayStr().slice(0,7);
+  if(d>0&&calYM>=cur){toast('已经是最新的一个月啦～');return;}
+  const p=calYM.split('-').map(Number);const nd=new Date(p[0],p[1]-1+d,1);
+  calYM=nd.getFullYear()+'-'+pad(nd.getMonth()+1);renderCalendar();
+}
+function openDayDetail(key){ // 点日历某一天 → 弹出这天的打卡明细
+  const list=state.checkins.filter(c=>c.date===key).sort((a,b)=>a.ts-b.ts);
+  const total=list.reduce((a,c)=>a+c.minutes,0);
+  const p=key.split('-').map(Number);
+  document.getElementById('dayTitle').textContent=p[1]+'月'+p[2]+'日';
+  document.getElementById('daySub').textContent=total>0?'这一天共读了 '+total+' 分钟，真棒！':'这一天还没有阅读记录';
+  const box=document.getElementById('dayList');
+  if(!list.length)box.innerHTML='<div class="empty" style="padding:24px 10px">这一天还是空白的，去打卡点亮它吧 🌟</div>';
+  else box.innerHTML='<div class="clist">'+list.map(c=>{
+    const dt=new Date(c.ts);const book=state.books.find(b=>b.id===c.bookId);
+    return '<div class="citem"><div class="cm">'+c.minutes+'<small style="font-size:11px;color:var(--ink-soft)">分</small></div>'+
+      '<div class="cx"><div class="cn">'+(esc(c.note)||'读了 '+c.minutes+' 分钟')+'</div><div class="ct">'+pad(dt.getHours())+':'+pad(dt.getMinutes())+' · '+(book?'📖 '+book.title:'未关联书籍')+
+      (c.pageEnd?' · 读到第 '+c.pageEnd+' 页':'')+(c.audio?' · 🎙️':'')+'</div></div>'+audioTag(c.audio)+'</div>';
+  }).join('')+'</div>';
+  openModal('mDay');
+}
 function ageText(bd){ // bd: 'YYYY-MM-DD' → "6岁3个月"，按当天动态计算
   if(!bd)return '';const p=bd.split('-').map(Number);
   if(p.length<2||!p[0]||isNaN(p[0]))return '';
@@ -989,11 +1134,7 @@ function renderReport(){
     {num:monthFinished,lab:'本月读完(本)'},{num:s.maxStreak,lab:'最长连续(天)'}];
   const box=document.getElementById('reportStats');box.innerHTML='';
   stats.forEach(st=>{const el=document.createElement('div');el.className='rstat';el.innerHTML='<div class="num">'+st.num+'</div><div class="lab">'+st.lab+'</div>';box.appendChild(el);});
-  const maxV=Math.max(10,...w.arr.map(x=>x.m));const chart=document.getElementById('chart');chart.innerHTML='';
-  w.arr.forEach(x=>{const col=document.createElement('div');col.className='col'+(x.isToday?' today':'');
-    const h=Math.max(4,Math.round(x.m/maxV*100));
-    col.innerHTML='<div class="v">'+(x.m||'')+'</div><div class="bar" style="height:0%"></div><div class="d">'+x.label+'</div>';
-    chart.appendChild(col);requestAnimationFrame(()=>{col.querySelector('.bar').style.height=h+'%';});});
+  renderTrend(); // 趋势图（本周/本月/上月 三档切换）
   const recent=state.checkins.slice().sort((a,b)=>b.ts-a.ts).slice(0,12);
   const rl=document.getElementById('recentList');
   if(!recent.length){rl.innerHTML='<div class="empty">还没有打卡记录哦～</div>';}
@@ -1007,6 +1148,7 @@ function renderReport(){
   const dc=dailyCheer(); // 报告底部：每日随机鼓励语（当天固定，跨天更换）
   const rce=document.getElementById('reportCheerEm');if(rce)rce.textContent=dc.em;
   document.getElementById('reportCheer').textContent=dc.tx;
+  renderCalendar(); // 阅读日历
   renderSyncBox();
 }
 function renderSyncBox(){
@@ -1536,6 +1678,12 @@ document.addEventListener('click',e=>{
     case 'localOnly':closeModal();break;
     case 'exitFamily':exitFamily();break;
     case 'copyCode':copyCode();break;
+    case 'trendWeek':trendMode='week';renderReport();break;
+    case 'trendMonth':trendMode='month';renderReport();break;
+    case 'trendLast':trendMode='last';renderReport();break;
+    case 'calPrev':calShift(-1);break;
+    case 'calNext':calShift(1);break;
+    case 'dayOpen':openDayDetail(t.getAttribute('data-date'));break;
     case 'export':exportData();break;
     case 'import':document.getElementById('importFile').click();break;
     case 'downloadApp':downloadApp();break;
