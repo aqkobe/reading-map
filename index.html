@@ -182,10 +182,10 @@
   .calnav button{padding:3px 12px;font-size:15px;line-height:1.3;}
   .calgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
   .cw{font-size:10.5px;font-weight:800;color:var(--ink-soft);text-align:center;padding:3px 0;}
-  .cday{aspect-ratio:1;border-radius:10px;background:#f2f6fa;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;color:var(--ink-soft);cursor:pointer;transition:transform .12s;padding:1px;min-height:34px;}
+  .cday{aspect-ratio:1;border-radius:10px;background:#f2f6fa;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;color:var(--ink-soft);cursor:pointer;transition:transform .12s;padding:1px;min-height:34px;position:relative;overflow:hidden;}
   .cday:active{transform:scale(.92);}
   .cday .cm{font-size:9px;font-weight:900;color:var(--coral-d);margin-top:1px;white-space:nowrap;}
-  .cday.has{background:linear-gradient(160deg,#fff3e8,#ffe0cf);color:var(--ink);box-shadow:0 2px 6px rgba(255,150,120,.22);}
+  .cday.has{background:linear-gradient(160deg,#fff3e8,#ffe0cf);color:var(--ink);box-shadow:0 2px 6px rgba(255,150,120,.22);padding-bottom:5px;}
   .cday.today{outline:2.5px solid var(--green);outline-offset:-1px;}
   .cday.empty{background:transparent;cursor:default;}
   .calhint{font-size:11.5px;font-weight:700;color:var(--ink-soft);margin-top:9px;text-align:center;}
