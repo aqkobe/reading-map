@@ -385,6 +385,27 @@
       </div>
     </section>
 
+    <!-- 日历 -->
+    <section class="page" id="page-cal">
+      <div class="topbar"><div class="hi">🗓️ 阅读日历</div></div>
+      <div class="card">
+        <div class="calhead">
+          <div class="sec-ttl">哪天读了书，一眼就看到</div>
+          <div class="calnav">
+            <button class="btn ghost" data-act="calPrev">‹</button>
+            <span id="calTitle"></span>
+            <button class="btn ghost" data-act="calNext">›</button>
+          </div>
+        </div>
+        <div class="calgrid" id="calGrid"></div>
+        <div class="calhint">👆 点某一天，看那天读了哪本书、读了多久</div>
+      </div>
+      <div class="card">
+        <div class="sec-ttl">📝 最近打卡</div>
+        <div id="recentList"></div>
+      </div>
+    </section>
+
     <!-- 报告 -->
     <section class="page" id="page-report">
       <div class="topbar"><div class="hi">📊 阅读报告</div></div>
@@ -398,22 +419,6 @@
           </span>
         </div>
         <div class="chart" id="chart"></div>
-      </div>
-      <div class="card">
-        <div class="calhead">
-          <div class="sec-ttl">🗓️ 阅读日历</div>
-          <div class="calnav">
-            <button class="btn ghost" data-act="calPrev">‹</button>
-            <span id="calTitle"></span>
-            <button class="btn ghost" data-act="calNext">›</button>
-          </div>
-        </div>
-        <div class="calgrid" id="calGrid"></div>
-        <div class="calhint">👆 点某一天，看那天读了哪本书、读了多久</div>
-      </div>
-      <div class="card">
-        <div class="sec-ttl">📝 最近打卡</div>
-        <div id="recentList"></div>
       </div>
       <div class="card">
         <div class="sec-ttl">⚙️ 设置 · 家庭共享</div>
@@ -444,6 +449,7 @@
     <button class="navitem" data-page="books"><span class="ic">📚</span>书架</button>
     <button class="navitem" data-page="map"><span class="ic">🗺️</span>地图</button>
     <button class="navitem" data-page="badges"><span class="ic">🏅</span>徽章</button>
+    <button class="navitem" data-page="cal"><span class="ic">🗓️</span>日历</button>
     <button class="navitem" data-page="report"><span class="ic">📊</span>报告</button>
   </nav>
 </div>
