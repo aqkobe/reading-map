@@ -840,9 +840,9 @@ function renderHome(){
   renderToday();
 }
 function motivate(s){
-  if(s.points>=10000)return{em:'👑',tx:'你是阅读传奇，整个星空都在为你鼓掌！',hx:'每一本书都变成了你的翅膀'};
-  if(s.points>=3000)return{em:'🌟',tx:'你是阅读宗师，太了不起了！',hx:'坚持本身，就是最厉害的魔法'};
-  if(s.points>=1000)return{em:'🎓',tx:'你是阅读大师啦，太了不起！',hx:'每一本书都变成了你的翅膀'};
+  // 高分段文案跟随实际等级名（10 级体系），不再写死旧称号
+  if(s.lv.idx>=LEVELS.length-1)return{em:'👑',tx:'你已经是「阅读宇宙」啦！整个星空都在为你鼓掌！',hx:'每一本书都变成了你的翅膀'};
+  if(s.points>=1000)return{em:'🎓',tx:'你是「'+s.lv.name+'」啦，太了不起！',hx:'每一本书都变成了你的翅膀'};
   if(s.maxStreak>=7)return{em:'🎉',tx:'坚持一周，你真的很棒！',hx:'连续阅读 '+s.maxStreak+' 天，点亮了坚持徽章'};
   if(s.streak>=3)return{em:'🔥',tx:'已经连续阅读 '+s.streak+' 天啦！',hx:s.streak>=6?'再读 1 天就解锁「坚持7天」啦！':'继续加油，习惯正在长出来'};
   if(s.today>=GOAL)return{em:'🌟',tx:'今天的阅读目标完成啦！',hx:'给自己一个大大的赞'};
