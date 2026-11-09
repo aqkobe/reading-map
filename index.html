@@ -188,7 +188,6 @@
   .cday.has{background:linear-gradient(160deg,#fff3e8,#ffe0cf);color:var(--ink);box-shadow:0 2px 6px rgba(255,150,120,.22);padding-bottom:5px;}
   .cday.today{outline:2.5px solid var(--green);outline-offset:-1px;}
   .cday.empty{background:transparent;cursor:default;}
-  .calhint{font-size:11.5px;font-weight:700;color:var(--ink-soft);margin-top:9px;text-align:center;}
   .cday .chd{position:absolute;bottom:1px;right:2px;font-size:8.5px;font-weight:900;color:#fff;background:#e05a4e;border-radius:6px;padding:0 4px;line-height:1.5;z-index:1;}
   .cday .chd.chw{background:#4a7fd4;}
   .clist{display:flex;flex-direction:column;gap:10px;}
@@ -197,7 +196,6 @@
   .citem .cx{flex:1;min-width:0;}
   .citem .cn{font-size:13px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .citem .ct{font-size:11px;color:var(--ink-soft);font-weight:600;margin-top:2px;}
-  .citem audio{height:30px;max-width:130px;}
   .nav{position:absolute;left:0;right:0;bottom:0;z-index:20;display:flex;justify-content:space-around;background:rgba(255,255,255,.82);backdrop-filter:blur(14px);padding:10px 8px calc(10px + env(safe-area-inset-bottom));box-shadow:0 -8px 24px rgba(80,110,160,.12);border-top:1px solid rgba(255,255,255,.6);}
   .navitem{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;color:var(--ink-soft);font-size:11px;font-weight:800;padding:4px 0;transition:color .2s;font-family:inherit;}
   .navitem .ic{font-size:22px;transition:transform .2s;}
@@ -226,11 +224,6 @@
   .field textarea{resize:none;min-height:74px;}
   .customrow{display:flex;gap:8px;align-items:center;margin-top:4px;}
   .customrow input{flex:1;}
-  .recrow{display:flex;align-items:center;gap:10px;}
-  .recbtn{border:2px solid var(--coral);background:#fff0f3;color:var(--coral-d);border-radius:14px;padding:11px 16px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;}
-  .recbtn.on{background:var(--coral);color:#fff;animation:blink 1s infinite;}
-  @keyframes blink{50%{opacity:.6}}
-  .recstate{font-size:12px;font-weight:800;color:var(--coral-d);}
   .reset{text-align:center;margin-top:8px;font-size:11.5px;color:var(--ink-soft);font-weight:700;}
   .reset a{color:var(--coral-d);text-decoration:none;cursor:pointer;}
   .syncbox{background:linear-gradient(135deg,#f3faff,#f6fbff);border-radius:16px;padding:14px;margin-bottom:12px;}
@@ -400,7 +393,6 @@
           </div>
         </div>
         <div class="calgrid" id="calGrid"></div>
-        <div class="calhint">👆 点某一天，看那天读了哪本书 · 角标 <span class="chd" style="position:static">休</span>=放假 <span class="chd chw" style="position:static">上学</span>=调休上学</div>
       </div>
       <div class="card">
         <div class="sec-ttl">📝 最近打卡</div>
@@ -486,14 +478,6 @@
         <label>本次读了多少页</label>
         <input type="number" id="pagesRead" min="1" placeholder="页数" />
       </div>
-    </div>
-    <div class="field" style="margin-top:6px;">
-      <label>🎙️ 语音小记 (选填，≤60秒)</label>
-      <div class="recrow">
-        <button class="recbtn" id="recBtn" data-act="rec">● 开始录音</button>
-        <span class="recstate" id="recState"></span>
-      </div>
-      <div id="recPreview" style="display:none;margin-top:10px;"></div>
     </div>
     <div class="field" style="margin-top:6px;">
       <label>今天读到了什么？(选填)</label>
@@ -705,8 +689,7 @@ function openDB(){return new Promise((res,rej)=>{
   if(!window.indexedDB){rej('no');return;}
   const r=indexedDB.open('rgm_db_v2',1);
   r.onupgradeneeded=e=>{const db=e.target.result;
-    if(!db.objectStoreNames.contains('kv'))db.createObjectStore('kv');
-    if(!db.objectStoreNames.contains('audio'))db.createObjectStore('audio');};
+    if(!db.objectStoreNames.contains('kv'))db.createObjectStore('kv');};
   r.onsuccess=e=>{_db=e.target.result;res(_db);};
   r.onerror=()=>rej(e.target.error);
 });}
@@ -774,7 +757,9 @@ const BADGES=[
   {id:'first',icon:'🌱',name:'阅读第一步',desc:'完成第一次阅读打卡',test:s=>s.checkinsCount>0},
   {id:'streak3',icon:'✨',name:'坚持3天',desc:'连续阅读满 3 天',test:s=>s.maxStreak>=3},
   {id:'streak7',icon:'🔥',name:'坚持7天',desc:'连续阅读满 7 天',test:s=>s.maxStreak>=7},
+  {id:'streak14',icon:'⭐',name:'坚持小能手',desc:'连续阅读满 14 天',test:s=>s.maxStreak>=14},
   {id:'streak30',icon:'🏅',name:'坚持30天',desc:'连续阅读满 30 天',test:s=>s.maxStreak>=30},
+  {id:'streak60',icon:'🛡️',name:'坚持60天',desc:'连续阅读满 60 天',test:s=>s.maxStreak>=60},
   {id:'bookworm',icon:'📚',name:'小小书虫',desc:'读完第 1 本书',test:s=>s.finished>=1},
   {id:'books3',icon:'📖',name:'三本书啦',desc:'累计读完 3 本书',test:s=>s.finished>=3},
   {id:'books10',icon:'📗',name:'小小藏书家',desc:'累计读完 10 本书',test:s=>s.finished>=10},
@@ -784,7 +769,7 @@ const BADGES=[
   {id:'earlybird',icon:'🌅',name:'晨读小达人',desc:'早上 8 点前读过书',test:s=>s.earlyBird},
   {id:'nightowl',icon:'🌙',name:'睡前故事家',desc:'晚上 9 点后读过书',test:s=>s.nightOwl},
   {id:'note',icon:'✍️',name:'小小记录员',desc:'写下第一条读后感',test:s=>s.hasNote},
-  {id:'voice',icon:'🎙️',name:'声音收藏家',desc:'录下第一段语音小记',test:s=>s.hasAudio},
+  {id:'hero10',icon:'🦸',name:'阅读小英雄',desc:'累计打卡满 10 次',test:s=>s.checkinsCount>=10},
   {id:'goal',icon:'🎯',name:'目标达成',desc:'单次完成 20 分钟目标',test:s=>s.hasGoal},
   {id:'weekfull',icon:'🌈',name:'一周全勤',desc:'本周 7 天全部打卡',test:s=>s.weekFull},
   {id:'expert',icon:'🏆',name:'阅读达人',desc:'积分达到 300 分',test:s=>s.points>=300},
@@ -806,17 +791,15 @@ const BADGES=[
   {id:'min4000',icon:'🌊',name:'破浪前行',desc:'累计阅读满 4000 分钟',test:s=>s.total>=4000},
   {id:'min10000',icon:'🚀',name:'万分钟阅读王',desc:'累计阅读满 10000 分钟',test:s=>s.total>=10000},
   {id:'note10',icon:'📝',name:'灵感作家',desc:'写下 10 条读后感',test:s=>s.noteCount>=10},
-  {id:'audio10',icon:'📻',name:'电台主播',desc:'录下 10 段语音小记',test:s=>s.audioCount>=10},
+  {id:'check100',icon:'🎊',name:'百次打卡庆典',desc:'累计打卡满 100 次',test:s=>s.checkinsCount>=100},
   {id:'goal10',icon:'🎪',name:'目标收割机',desc:'完成 10 次 20 分钟目标打卡',test:s=>s.goalCount>=10},
 ];
 function badgeState(s){const cs=state.checkins;
   const ext={...s,checkinsCount:cs.length,
     has60:cs.some(c=>c.minutes>=60),
     noteCount:cs.filter(c=>(c.note||'').trim().length>0).length,
-    audioCount:cs.filter(c=>!!c.audio).length,
     goalCount:cs.filter(c=>c.minutes>=GOAL).length,
     hasNote:cs.some(c=>(c.note||'').trim().length>0),
-    hasAudio:cs.some(c=>!!c.audio),
     hasGoal:cs.some(c=>c.minutes>=GOAL),
     earlyBird:cs.some(c=>new Date(c.ts).getHours()<8),
     nightOwl:cs.some(c=>new Date(c.ts).getHours()>=21),
@@ -967,7 +950,6 @@ function maybeDailyCheer(){ // 每天第一次打开 app 弹出鼓励弹窗（�
     setTimeout(()=>openModal('mDaily'),400); // 稍等页面渲染完再弹，避免被首屏动画盖住
   }catch(e){}
 }
-function audioTag(a){if(!a)return '';return '<audio controls preload="none" src="data:'+a.mime+';base64,'+a.b64+'"></audio>';}
 function renderToday(){
   const box=document.getElementById('todayList');const t=todayStr();
   const list=state.checkins.filter(c=>c.date===t).sort((a,b)=>b.ts-a.ts);
@@ -977,8 +959,7 @@ function renderToday(){
   box.innerHTML=list.map(c=>{const book=state.books.find(b=>b.id===c.bookId);
     return '<div class="citem"><div class="cm">'+c.minutes+'<small style="font-size:11px;color:var(--ink-soft)">分</small></div>'+
     '<div class="cx"><div class="cn">'+(esc(c.note)||'今天读了 '+c.minutes+' 分钟')+'</div><div class="ct">'+
-    (book?'📖 '+book.title+' · ':'')+(c.pageEnd?'读到第 '+c.pageEnd+' 页 · ':'')+(c.audio?'🎙️ 有语音':'')+'</div></div>'+
-    audioTag(c.audio)+'</div>';}).join('');
+    (book?'📖 '+book.title+' · ':'')+(c.pageEnd?'读到第 '+c.pageEnd+' 页':'')+'</div></div></div>';}).join('');
 }
 
 let curTab='all';
@@ -1106,15 +1087,11 @@ function renderCalendar(){
   grid.innerHTML=html;
 }
 function calShift(d){
-  // 往前不限；往后最多看到明年年底（节假日数据每年11月已发布次年，正好能提前看）
   const cur=todayStr().slice(0,7);
-  const maxYM=(new Date().getFullYear()+1)+'-12';
-  if(d>0&&calYM>=maxYM){toast('下一年的日历要等哦～');return;}
-  if(d<0&&calYM<='2025-12')return; // 别翻到 app 诞生前太久
+  if(d>0&&calYM>=cur){toast('已经是最新的一个月啦～');return;}
+  if(d<0&&calYM<='2026-01')return; // 别翻到 app 诞生前
   const p=calYM.split('-').map(Number);const nd=new Date(p[0],p[1]-1+d,1);
-  const nym=nd.getFullYear()+'-'+pad(nd.getMonth()+1);
-  calYM=nym;renderCalendar();
-  if(nym>cur)ensureHoliday(Number(nym.slice(0,4))).then(()=>renderCalendar()); // 翻到未来年份时按需拉节假日
+  calYM=nd.getFullYear()+'-'+pad(nd.getMonth()+1);renderCalendar();
 }
 function openDayDetail(key){ // 点日历某一天 → 弹出这天的打卡明细
   const list=state.checkins.filter(c=>c.date===key).sort((a,b)=>a.ts-b.ts);
@@ -1129,7 +1106,7 @@ function openDayDetail(key){ // 点日历某一天 → 弹出这天的打卡明�
     const dt=new Date(c.ts);const book=state.books.find(b=>b.id===c.bookId);
     return '<div class="citem"><div class="cm">'+c.minutes+'<small style="font-size:11px;color:var(--ink-soft)">分</small></div>'+
       '<div class="cx"><div class="cn">'+(esc(c.note)||'读了 '+c.minutes+' 分钟')+'</div><div class="ct">'+pad(dt.getHours())+':'+pad(dt.getMinutes())+' · '+(book?'📖 '+book.title:'未关联书籍')+
-      (c.pageEnd?' · 读到第 '+c.pageEnd+' 页':'')+(c.audio?' · 🎙️':'')+'</div></div>'+audioTag(c.audio)+'</div>';
+      (c.pageEnd?' · 读到第 '+c.pageEnd+' 页':'')+'</div></div></div>';
   }).join('')+'</div>';
   openModal('mDay');
 }
@@ -1191,7 +1168,7 @@ function renderReport(){
     const book=state.books.find(b=>b.id===c.bookId);
     return '<div class="citem"><div class="cm">'+c.minutes+'<small style="font-size:11px;color:var(--ink-soft)">分</small></div>'+
       '<div class="cx"><div class="cn">'+(esc(c.note)||'读了 '+c.minutes+' 分钟')+'</div><div class="ct">'+tl+' · '+(book?'📖 '+book.title:'未关联书籍')+
-      (c.pageEnd?' · 读到第 '+c.pageEnd+' 页':'')+(c.audio?' · 🎙️':'')+'</div></div>'+audioTag(c.audio)+'</div>';
+      (c.pageEnd?' · 读到第 '+c.pageEnd+' 页':'')+'</div></div></div>';
   }).join('')+'</div>';
   const dc=dailyCheer(); // 报告底部：每日随机鼓励语（当天固定，跨天更换）
   const rce=document.getElementById('reportCheerEm');if(rce)rce.textContent=dc.em;
@@ -1347,9 +1324,9 @@ function gotoPage(page){
 }
 function closeModal(){document.querySelectorAll('.modal').forEach(m=>m.classList.remove('show'));}
 
-let selDur=null, pendingAudio=null;
+let selDur=null;
 function openCheckin(preset,customMinutes,bookId){
-  selDur=preset||null;pendingAudio=null;
+  selDur=preset||null;
   // 若有「正在读」的书，本次打卡只能选它；否则列出全部书供挑选
   const box=document.getElementById('bookSelBox');
   const reading=state.books.find(b=>b.status==='reading');
@@ -1391,7 +1368,7 @@ function openCheckin(preset,customMinutes,bookId){
   document.getElementById('customMin').value=customMinutes||'';
   document.getElementById('noteInput').value='';
   if(customMinutes){grid.querySelectorAll('.dbtn').forEach(x=>x.classList.remove('on'));}
-  resetRecUI();openModal('mCheckin');
+  openModal('mCheckin');
 }
 
 /* ---- 计时器：开始阅读（真实计时） vs 完成今日阅读（直接记录） ---- */
@@ -1440,7 +1417,7 @@ function submitCheckin(){
   const before=snapshot();const beforeBadge=badgeState(before);const beforeMap=mapState(before);
   // 勾选「全书读完」：自动填到最后一页
   if(finished&&book&&book.totalPages){pageEnd=book.totalPages;pages=Math.max(0,book.totalPages-(book.lastPage||0));}
-  state.checkins.push({id:uid(),date:todayStr(),minutes:min,points:checkinPoints(min),note,audio:pendingAudio,ts:Date.now(),bookId,
+  state.checkins.push({id:uid(),date:todayStr(),minutes:min,points:checkinPoints(min),note,ts:Date.now(),bookId,
     pages:pages>0?pages:null,pageEnd:pageEnd>0?pageEnd:null,updatedAt:Date.now()});
   if(book){
     if(finished){book.status='finished';book.finishedAt=todayStr();if(book.totalPages)book.lastPage=book.totalPages;}
@@ -1511,7 +1488,6 @@ function delCheckin(id){
   state.deleted.checkins[id]=Date.now();           // 墓碑：删除随同步传播，其他设备拉取时真正移除
   const c=state.checkins.find(x=>x.id===id);
   state.checkins=state.checkins.filter(x=>x.id!==id);
-  if(c&&c.audio&&_db){try{_db.transaction('audio','readwrite').objectStore('audio').delete(id);}catch(e){}} // 本地语音一并清除
   save();renderAll();toast('🗑️ 已删除该条阅读记录');
 }
 
@@ -1534,7 +1510,6 @@ function renderBookDetail(b){
     const pg=c.pageEnd?'<div class="pages">读到第 '+c.pageEnd+' 页'+(c.pages?'（本次 +'+c.pages+' 页）':'')+'</div>':'';
     return '<div class="btline"><div class="tt">'+tl+'</div><div class="tc"><div class="min">'+c.minutes+' 分钟</div>'+
       (c.note?'<div class="note">'+esc(c.note)+'</div>':'')+pg+
-      (c.audio?'<div style="margin-top:6px">'+audioTag(c.audio)+'</div>':'')+
       '<button class="mini del" data-act="delCheckin" data-id="'+c.id+'" data-bid="'+b.id+'" style="margin-top:6px" title="删除这条记录">🗑️</button></div></div>';
   }).join('')+'</div>';
   document.getElementById('bookDetailBody').innerHTML=
@@ -1548,33 +1523,6 @@ function renderBookDetail(b){
     timeline+
     '<div class="bdacts">'+(b.status==='finished'?'':'<button class="btn sun" data-act="finishBook" data-id="'+b.id+'">✅ 全书阅读完毕</button>')+'<button class="btn primary" data-act="editBook" data-id="'+b.id+'">✏️ 编辑书籍</button><button class="btn ghost" data-act="closeModal">关闭</button></div>';
 }
-
-/* ---- 录音 ---- */
-let mediaRec=null,recChunks=[],recStream=null,recTimer=null,recording=false;
-function resetRecUI(){recording=false;const b=document.getElementById('recBtn');if(b){b.textContent='● 开始录音';b.classList.remove('on');}
-  document.getElementById('recState').textContent='';document.getElementById('recPreview').style.display='none';}
-async function startRec(){
-  if(!window.isSecureContext){toast('录音需 HTTPS：请用手机打开分享链接后使用');return;}
-  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){toast('当前浏览器不支持录音');return;}
-  try{recStream=await navigator.mediaDevices.getUserMedia({audio:true});}catch(e){
-    toast(e&&e.name==='NotAllowedError'?'请允许麦克风权限后再录':'无法访问麦克风');return;}
-  recChunks=[];mediaRec=new MediaRecorder(recStream);
-  mediaRec.ondataavailable=e=>{if(e.data.size)recChunks.push(e.data);};
-  mediaRec.onstop=()=>{const blob=new Blob(recChunks,{type:mediaRec.mimeType||'audio/webm'});
-    const r=new FileReader();r.onload=()=>{pendingAudio={b64:r.result.split(',')[1],mime:blob.type};showRecPreview();};r.readAsDataURL(blob);
-    recStream.getTracks().forEach(t=>t.stop());};
-  mediaRec.start();recording=true;
-  const b=document.getElementById('recBtn');b.textContent='■ 停止录音';b.classList.add('on');
-  document.getElementById('recState').textContent='录音中…';
-  recTimer=setTimeout(stopRec,60000);
-}
-function stopRec(){if(mediaRec&&mediaRec.state!=='inactive')mediaRec.stop();recording=false;clearTimeout(recTimer);
-  const b=document.getElementById('recBtn');b.textContent='● 开始录音';b.classList.remove('on');document.getElementById('recState').textContent='';}
-function showRecPreview(){const p=document.getElementById('recPreview');
-  p.innerHTML='🎙️ 已录好 <audio controls src="data:'+pendingAudio.mime+';base64,'+pendingAudio.b64+'"></audio> '+
-    '<button class="btn ghost" style="padding:8px 12px;font-size:12px" data-act="rerec">重录</button>';
-  p.style.display='';}
-function rerec(){pendingAudio=null;document.getElementById('recPreview').style.display='none';toast('已清除，可重新录');}
 
 /* ---- 家庭共享 ---- */
 function openFamily(){document.getElementById('familyInput').value=state.settings.familyCode||genCode();openModal('mFamily');}
@@ -1718,8 +1666,6 @@ document.addEventListener('click',e=>{
     case 'saveBook':saveBook();break;
     case 'deleteBook':if(editId)delBook(editId);closeModal();break;
     case 'submitCheckin':submitCheckin();break;
-    case 'rec':recording?stopRec():startRec();break;
-    case 'rerec':rerec();break;
     case 'closeModal':closeModal();break;
     case 'openFamily':openFamily();break;
     case 'genCode':document.getElementById('familyInput').value=genCode();break;
@@ -1742,11 +1688,10 @@ document.addEventListener('click',e=>{
     case 'saveProfile':saveProfile();break;
     case 'pickPhoto':pickPhoto();break;
     case 'clearPhoto':clearPhoto();break;
-    case 'reset':showConfirm('清空全部数据','将删除所有书籍、打卡记录、成长数据和云端家庭共享记录（含语音），且无法恢复。\n确定要清空吗？',()=>{
+    case 'reset':showConfirm('清空全部数据','将删除所有书籍、打卡记录、成长数据和云端家庭共享记录，且无法恢复。\n确定要清空吗？',()=>{
       const fam=state.settings.familyCode;
       state=seed();                                 // 内存置空（child/books/checkins/familyCode 全空）
       persist();                                    // 本地 IndexedDB / localStorage 落空
-      if(_db){try{_db.transaction('audio','readwrite').objectStore('audio').clear();}catch(e){}} // 清掉本地语音库
       renderAll();toast('🧹 已清空全部数据');
       if(SB&&fam){state.settings.familyCode=fam;doPush(true).finally(()=>{state.settings.familyCode=null;persist();});} // 用原 familyCode 把空状态推到云端，彻底清掉家庭共享记录
     });break;
