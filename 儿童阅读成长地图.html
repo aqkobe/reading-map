@@ -1030,7 +1030,7 @@ function last7(){ // 自然周：周一 → 周日，符合日历习惯
     const m=state.checkins.filter(c=>c.date===key).reduce((a,c)=>a+c.minutes,0);sum+=m;
     arr.push({key,m,label:['一','二','三','四','五','六','日'][i],isToday:key===today});}
   return {arr,min:sum};}
-function weekFullCheck(){ // 一周全勤：历史上出现过任意一个完整自然周(周一~周日)7天全打卡即永久点亮
+function weekFullCheck(){ // 一周全勤：历史上出现过任意一个完整自然周(周一~周日)7天全打卡即算达成（成就型，不回退）
   // 徽章应该"达成一次、永久拥有"——不能因为最近两周没全勤就把 9 月的成就抹掉
   const dates=new Set(state.checkins.filter(c=>c.minutes>0).map(c=>c.date));
   if(!dates.size)return false;
