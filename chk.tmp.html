@@ -1,0 +1,1736 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<title>珈珈的阅读成长地图</title>
+<link rel="manifest" href='data:application/manifest+json,{"name":"珈珈的阅读成长地图","short_name":"阅读地图","display":"standalone","background_color":"#bfe3ff","theme_color":"#34c8a0","start_url":"."}' />
+<style>
+  :root{
+    --sky-top:#bfe3ff;--sky-mid:#e7f3ff;--sky-bottom:#fff3ef;
+    --card:#ffffff;--ink:#2b3a4a;--ink-soft:#7c8da6;
+    --green:#34c8a0;--green-d:#16a987;--coral:#ff8fa3;--coral-d:#ff6b8a;
+    --sun:#ffd166;--sun-d:#ffb703;--blue:#5b9cf0;--purple:#b89bff;
+    --line:#eef2f7;--shadow:0 12px 30px rgba(70,100,150,.14);--shadow-sm:0 6px 16px rgba(70,100,150,.10);
+    --radius:24px;--radius-sm:16px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei","Segoe UI",sans-serif;color:var(--ink);
+    background:linear-gradient(160deg,#d7ecff,#eaf3ff 40%,#fff3ef);background-attachment:fixed;-webkit-font-smoothing:antialiased;overflow:hidden;}
+  .app{position:relative;max-width:440px;margin:0 auto;height:100vh;height:100dvh;overflow:hidden;display:flex;flex-direction:column;
+    box-shadow:0 0 60px rgba(80,120,180,.18);
+    background:radial-gradient(120% 60% at 80% -10%,rgba(255,209,102,.35),transparent 60%),
+      radial-gradient(120% 60% at -10% 110%,rgba(52,200,160,.28),transparent 55%),
+      linear-gradient(160deg,var(--sky-top),var(--sky-mid) 45%,var(--sky-bottom));}
+  .bg-deco{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0;}
+  .cloud{position:absolute;opacity:.7;filter:drop-shadow(0 8px 12px rgba(120,150,200,.12));animation:drift 26s linear infinite;}
+  .cloud.c1{top:8%;left:-20%;width:130px;animation-duration:34s;}
+  .cloud.c2{top:22%;right:-25%;width:100px;animation-duration:42s;animation-direction:reverse;}
+  .cloud.c3{top:54%;left:-25%;width:90px;animation-duration:50s;}
+  @keyframes drift{from{transform:translateX(0)}to{transform:translateX(140vw)}}
+  .star{position:absolute;color:#fff;opacity:.85;font-size:12px;animation:tw 3.4s ease-in-out infinite;filter:drop-shadow(0 0 6px rgba(255,255,255,.9));}
+  @keyframes tw{0%,100%{transform:scale(.7);opacity:.35}50%{transform:scale(1.15);opacity:1}}
+  .scroll{z-index:1;flex:1;overflow-y:auto;overflow-x:hidden;padding:18px 16px 96px;-webkit-overflow-scrolling:touch;}
+  .scroll::-webkit-scrollbar{width:0;}
+  .page{display:none;animation:fade .35s ease;}
+  .page.active{display:block;}
+  @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+  .hi{font-size:22px;font-weight:800;letter-spacing:.5px;}
+  .hi small{display:block;font-size:12px;font-weight:600;color:var(--ink-soft);margin-top:2px;}
+  .datepill{background:rgba(255,255,255,.7);backdrop-filter:blur(6px);border-radius:999px;padding:7px 13px;font-size:12px;font-weight:700;color:var(--ink-soft);box-shadow:var(--shadow-sm);}
+  .card{background:var(--card);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);margin-bottom:14px;position:relative;overflow:hidden;}
+  .profile{display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,#fff,#f3faff);}
+  .avatar{width:64px;height:64px;border-radius:22px;display:grid;place-items:center;font-size:34px;background:linear-gradient(135deg,var(--sun),var(--coral));box-shadow:0 8px 18px rgba(255,150,120,.35);flex:none;}
+  .pname{font-size:20px;font-weight:800;}
+  .pmeta{font-size:12.5px;color:var(--ink-soft);font-weight:600;margin-top:2px;}
+  .lvpill{margin-left:auto;background:linear-gradient(135deg,var(--green),var(--blue));color:#fff;border-radius:999px;padding:7px 13px;font-size:13px;font-weight:800;box-shadow:0 6px 14px rgba(52,200,160,.4);white-space:nowrap;}
+  .avpick{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:8px;}
+  .avpick button{font-size:24px;line-height:1;background:#fff;border:2px solid transparent;border-radius:14px;padding:9px 0;box-shadow:var(--shadow-sm);}
+  .avpick button.on{border-color:var(--green);background:#eafaf5;transform:scale(1.06);}
+  .bday{display:flex;align-items:center;gap:8px;margin-top:8px;}
+  .bday select{flex:1;min-width:0;appearance:none;-webkit-appearance:none;background:#fff url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8'><path d='M1 1l5 5 5-5' stroke='%2390a4b8' stroke-width='2' fill='none' stroke-linecap='round'/></svg>") no-repeat right 10px center;border:2px solid #e6eef7;border-radius:14px;padding:11px 26px 11px 10px;font-size:15px;font-weight:800;color:var(--ink);box-shadow:var(--shadow-sm);}
+  .bday .blab{font-size:13px;font-weight:800;color:var(--ink-soft);flex:none;}
+  .photorow{display:flex;gap:12px;align-items:center;margin-top:10px;}
+  .phprev{width:66px;height:66px;flex:none;border-radius:20px;background:linear-gradient(135deg,var(--sun),var(--coral));display:grid;place-items:center;font-size:30px;overflow:hidden;box-shadow:var(--shadow-sm);}
+  .phprev img{width:100%;height:100%;object-fit:cover;}
+  .tsub{font-size:13px;font-weight:800;color:var(--ink-soft);margin:-2px 0 10px;}
+  .nbar{height:8px;border-radius:999px;background:#eef3f8;overflow:hidden;margin:7px 0;}
+  .nbar>i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--sun),var(--coral));transition:width .6s;}
+  .bdesc{font-size:10.5px;color:var(--ink-soft);font-weight:600;line-height:1.35;margin-top:3px;}
+  .sec-ttl .more{margin-left:auto;font-size:12px;font-weight:800;color:var(--blue);cursor:pointer;background:#eef6ff;border-radius:999px;padding:4px 10px;}
+  .sec-ttl{display:flex;align-items:center;}
+  .badge.more .ic{font-size:26px;font-weight:900;color:var(--blue);background:#eef6ff;}
+  .bnote{margin-top:7px;background:#f7fbff;border-left:3px solid var(--blue);border-radius:0 10px 10px 0;padding:7px 10px;font-size:12px;font-weight:600;color:var(--ink);line-height:1.45;white-space:pre-wrap;}
+  .lvhead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;}
+  .lvhead b{font-size:15px;font-weight:800;}
+  .lvhead span{font-size:12px;color:var(--ink-soft);font-weight:700;}
+  .bar{height:14px;border-radius:999px;background:#eef3f8;overflow:hidden;position:relative;}
+  .bar>i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--sun),var(--coral),var(--purple));background-size:200% 100%;animation:flow 3s linear infinite;transition:width .8s cubic-bezier(.2,.9,.3,1);}
+  @keyframes flow{to{background-position:200% 0}}
+  .lvfoot{display:flex;justify-content:space-between;font-size:11.5px;color:var(--ink-soft);font-weight:700;margin-top:7px;}
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .stat{background:linear-gradient(135deg,#fff,#f6fbff);border-radius:var(--radius-sm);padding:14px;box-shadow:var(--shadow-sm);text-align:center;}
+  .stat .num{font-size:26px;font-weight:900;line-height:1;background:linear-gradient(135deg,var(--blue),var(--purple));-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .stat .lab{font-size:12px;color:var(--ink-soft);font-weight:700;margin-top:6px;}
+  .goal{background:linear-gradient(135deg,#fff6ef,#ffeef4);}
+  .goal .ttl{font-size:15px;font-weight:800;display:flex;align-items:center;gap:7px;}
+  .goal .sub{font-size:12px;color:var(--ink-soft);font-weight:700;margin:4px 0 12px;}
+  .goalbar{height:12px;border-radius:999px;background:rgba(255,255,255,.7);overflow:hidden;margin-bottom:14px;}
+  .goalbar>i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--coral),var(--sun));transition:width .8s cubic-bezier(.2,.9,.3,1);}
+  .btns{display:flex;gap:10px;}
+  .timer{text-align:center;padding:4px 0 2px;}
+  .tnum{font-size:38px;font-weight:900;letter-spacing:2px;background:linear-gradient(135deg,var(--sun),var(--coral));-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:10px;}
+  .minput{display:flex;align-items:center;gap:10px;margin-top:12px;background:linear-gradient(135deg,#fff,#f7fbff);border:2px solid #e6eef7;border-radius:20px;padding:10px 12px;box-shadow:var(--shadow-sm);}
+  .mstep{width:40px;height:40px;flex:none;border:none;border-radius:14px;background:linear-gradient(135deg,var(--blue),var(--purple));color:#fff;font-size:22px;font-weight:800;box-shadow:0 6px 14px rgba(91,156,240,.35);}
+  .mstep:active{transform:scale(.94);}
+  .mwrap{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;}
+  .mwrap input{width:82px;border:none;background:transparent;text-align:center;font-size:26px;font-weight:900;color:var(--ink);outline:none;}
+  .mwrap input::placeholder{color:#c9d6e4;font-weight:800;}
+  .munit{font-size:14px;font-weight:800;color:var(--ink-soft);}
+  .btn{flex:1;border:none;border-radius:16px;padding:14px;font-size:14.5px;font-weight:800;cursor:pointer;transition:transform .12s,box-shadow .2s;font-family:inherit;}
+  .btn:active{transform:scale(.96);}
+  .btn.primary{background:linear-gradient(135deg,var(--green),var(--green-d));color:#fff;box-shadow:0 8px 18px rgba(22,169,135,.35);}
+  .btn.sun{background:linear-gradient(135deg,var(--sun),var(--sun-d));color:#5a4500;box-shadow:0 8px 18px rgba(255,183,3,.35);}
+  .btn.ghost{background:#fff;color:var(--ink);box-shadow:var(--shadow-sm);border:1px solid var(--line);}
+  .btn.block{width:100%;}
+  .btn.danger{background:linear-gradient(135deg,#ff5b6e,#e23b52);color:#fff;box-shadow:0 8px 18px rgba(226,59,82,.35);}
+  .finishchk{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800;color:var(--ink);cursor:pointer;}
+  .finishchk input{width:18px;height:18px;accent-color:var(--green);flex:none;}
+  .danger-link{color:var(--coral-d);border-color:#ffd5da;}
+  .cheer{background:linear-gradient(120deg,var(--blue),var(--purple));color:#fff;border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);margin-bottom:14px;display:flex;gap:12px;align-items:center;}
+  .cheer .em{font-size:32px;filter:drop-shadow(0 4px 8px rgba(0,0,0,.15));animation:pop 2.4s ease-in-out infinite;}
+  .cheer .tx{font-size:14.5px;font-weight:800;line-height:1.4;}
+  .cheer .hx{font-size:11.5px;font-weight:600;opacity:.85;margin-top:3px;}
+  .sec-ttl{font-size:15px;font-weight:800;margin:6px 2px 12px;display:flex;align-items:center;gap:7px;}
+  .badges{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+  .badge{background:#fff;border-radius:18px;padding:14px 8px 12px;text-align:center;box-shadow:var(--shadow-sm);transition:transform .2s;position:relative;}
+  .badge .ic{font-size:30px;line-height:1;filter:grayscale(1);opacity:.4;transition:.4s;}
+  .badge .nm{font-size:11.5px;font-weight:800;margin-top:7px;color:var(--ink-soft);}
+  .badge.on .ic{filter:none;opacity:1;animation:pop .6s ease;}
+  .badge.on .nm{color:var(--ink);}
+  .badge.on{background:linear-gradient(135deg,#fff,#f3fff9);box-shadow:0 8px 20px rgba(52,200,160,.28);}
+  .badge .lock{position:absolute;top:8px;right:8px;font-size:11px;opacity:.5;}
+  @keyframes pop{0%{transform:scale(.4)}60%{transform:scale(1.25)}100%{transform:scale(1)}}
+  .tabs{display:flex;gap:8px;overflow-x:auto;padding:2px 0 14px;margin:0 -2px;}
+  .tabs::-webkit-scrollbar{height:0;}
+  .tab{flex:none;background:rgba(255,255,255,.7);border:1px solid var(--line);border-radius:999px;padding:9px 16px;font-size:13px;font-weight:800;color:var(--ink-soft);cursor:pointer;white-space:nowrap;transition:.2s;}
+  .tab.on{background:linear-gradient(135deg,var(--green),var(--blue));color:#fff;border-color:transparent;box-shadow:0 6px 14px rgba(52,200,160,.35);}
+  .books{display:flex;flex-direction:column;gap:12px;}
+  .book{display:flex;gap:13px;background:#fff;border-radius:18px;padding:13px;box-shadow:var(--shadow-sm);align-items:center;animation:fade .3s ease;}
+  .cover{width:52px;height:68px;border-radius:12px;flex:none;display:grid;place-items:center;color:#fff;font-size:24px;font-weight:900;box-shadow:0 6px 14px rgba(0,0,0,.12);}
+  .binfo{flex:1;min-width:0;}
+  .btitle{font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .bmeta{font-size:12px;color:var(--ink-soft);font-weight:600;margin-top:4px;display:flex;gap:7px;flex-wrap:wrap;align-items:center;}
+  .tag{background:#eef4fb;border-radius:999px;padding:2px 9px;font-size:11px;font-weight:700;color:var(--blue);}
+  .statusdot{font-size:11px;font-weight:800;padding:3px 9px;border-radius:999px;}
+  .st-want{background:#fff0e6;color:#ff8a3d;}
+  .st-reading{background:#e6f5ff;color:var(--blue);}
+  .st-finished{background:#e6fbf2;color:var(--green-d);}
+  .bacts{display:flex;flex-direction:column;gap:8px;flex:none;}
+  .mini{border:none;background:#f4f7fb;border-radius:10px;width:34px;height:30px;font-size:14px;cursor:pointer;color:var(--ink-soft);font-weight:800;}
+  .mini:active{transform:scale(.92);}
+  .mini.del{color:var(--coral-d);}
+  .empty{text-align:center;color:var(--ink-soft);font-weight:700;padding:40px 10px;font-size:14px;}
+  .fabadd{position:absolute;right:18px;bottom:84px;z-index:5;width:56px;height:56px;border-radius:50%;border:none;background:linear-gradient(135deg,var(--coral),var(--sun));color:#fff;font-size:30px;font-weight:300;cursor:pointer;box-shadow:0 10px 24px rgba(255,120,120,.45);display:grid;place-items:center;transition:transform .15s;}
+  .fabadd:active{transform:scale(.9) rotate(90deg);}
+  .mapwrap{position:relative;padding:6px 4px;}
+  .maphead{text-align:center;margin-bottom:6px;}
+  .maphead .t{font-size:18px;font-weight:900;}
+  .maphead .s{font-size:12px;color:var(--ink-soft);font-weight:700;margin-top:3px;}
+  .path{position:relative;margin:10px 0 0;}
+  .node{display:flex;gap:14px;align-items:flex-start;position:relative;padding-bottom:18px;}
+  .node:not(:last-child)::before{content:"";position:absolute;left:28px;top:54px;bottom:-4px;width:4px;background:linear-gradient(var(--green),var(--blue));border-radius:4px;opacity:.3;}
+  .node.on:not(:last-child)::before{opacity:1;}
+  .nicon{width:56px;height:56px;border-radius:18px;flex:none;display:grid;place-items:center;font-size:28px;background:#eef2f7;color:#b9c4d0;box-shadow:var(--shadow-sm);position:relative;z-index:1;transition:.4s;}
+  .node.on .nicon{background:linear-gradient(135deg,var(--sun),var(--coral));color:#fff;box-shadow:0 10px 22px rgba(255,150,120,.4);animation:pop .7s ease;}
+  .nbody{flex:1;background:#fff;border-radius:16px;padding:13px 15px;box-shadow:var(--shadow-sm);min-width:0;}
+  .node.on .nbody{background:linear-gradient(135deg,#fff,#f3fff9);}
+  .nname{font-size:15px;font-weight:800;display:flex;align-items:center;gap:7px;}
+  .ndesc{font-size:12px;color:var(--ink-soft);font-weight:600;margin-top:4px;}
+  .nstat{font-size:11.5px;font-weight:800;margin-top:8px;display:inline-block;padding:3px 10px;border-radius:999px;}
+  .nstat.done{background:var(--green);color:#fff;}
+  .nstat.lock{background:#eef2f7;color:var(--ink-soft);}
+  .island{font-size:60px;text-align:center;margin:6px 0 0;filter:drop-shadow(0 10px 14px rgba(80,120,160,.18));animation:float 5s ease-in-out infinite;}
+  @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+  .report-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+  .rstat{background:linear-gradient(135deg,#fff,#f6fbff);border-radius:18px;padding:15px;box-shadow:var(--shadow-sm);}
+  .rstat .num{font-size:24px;font-weight:900;color:var(--ink);}
+  .rstat .lab{font-size:12px;color:var(--ink-soft);font-weight:700;margin-top:5px;}
+  .chartcard{padding:18px 14px 14px;}
+  .chartcard .ttl{font-size:15px;font-weight:800;margin-bottom:14px;display:flex;align-items:center;gap:7px;}
+  .chart{display:flex;align-items:flex-end;gap:8px;height:150px;padding:0 2px;}
+  .col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:6px;}
+  .col .bar{width:100%;max-width:30px;border-radius:8px 8px 4px 4px;background:linear-gradient(180deg,var(--sun),var(--coral));transition:height .9s cubic-bezier(.2,.9,.3,1);box-shadow:0 4px 10px rgba(255,150,120,.3);}
+  .col.today .bar{background:linear-gradient(180deg,var(--green),var(--blue));box-shadow:0 4px 10px rgba(52,200,160,.35);}
+  .col .v{font-size:10.5px;font-weight:800;color:var(--ink-soft);}
+  .col .d{font-size:11px;font-weight:800;color:var(--ink-soft);}
+  .col.today .d{color:var(--green-d);}
+  /* 趋势周期切换 */
+  .segbar{display:flex;gap:5px;margin-left:auto;}
+  .segbtn{border:none;background:#eef3f8;border-radius:999px;padding:4px 11px;font-size:11.5px;font-weight:800;color:var(--ink-soft);cursor:pointer;font-family:inherit;transition:all .15s;}
+  .segbtn.on{background:linear-gradient(90deg,var(--sun),var(--coral));color:#fff;box-shadow:0 3px 8px rgba(255,150,120,.35);}
+  .chart.mon{gap:2px;}
+  .chart.mon .col{gap:3px;}
+  .chart.mon .col .v{font-size:8.5px;}
+  .chart.mon .col .d{font-size:8.5px;}
+  .chart.mon .col .bar{border-radius:4px 4px 2px 2px;}
+  /* 阅读日历 */
+  .calhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .calnav{display:flex;align-items:center;gap:6px;font-weight:900;font-size:13.5px;color:var(--ink);}
+  .calnav button{padding:3px 12px;font-size:15px;line-height:1.3;}
+  .calgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+  .cw{font-size:10.5px;font-weight:800;color:var(--ink-soft);text-align:center;padding:3px 0;}
+  .cday{aspect-ratio:1;border-radius:10px;background:#f2f6fa;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;color:var(--ink-soft);cursor:pointer;transition:transform .12s;padding:1px;min-height:34px;position:relative;overflow:hidden;}
+  .cday:active{transform:scale(.92);}
+  .cday .cm{font-size:9px;font-weight:900;color:var(--coral-d);margin-top:1px;white-space:nowrap;}
+  .cday.has{background:linear-gradient(160deg,#fff3e8,#ffe0cf);color:var(--ink);box-shadow:0 2px 6px rgba(255,150,120,.22);padding-bottom:5px;}
+  .cday.today{outline:2.5px solid var(--green);outline-offset:-1px;}
+  .cday.empty{background:transparent;cursor:default;}
+  .cday .chd{position:absolute;bottom:1px;right:2px;font-size:8.5px;font-weight:900;color:#fff;background:#e05a4e;border-radius:6px;padding:0 4px;line-height:1.5;z-index:1;}
+  .cday .chd.chw{background:#4a7fd4;}
+  .clist{display:flex;flex-direction:column;gap:10px;}
+  .citem{display:flex;gap:10px;align-items:center;background:#fafcff;border-radius:14px;padding:11px 13px;box-shadow:var(--shadow-sm);}
+  .citem .cm{font-size:18px;font-weight:900;color:var(--green-d);white-space:nowrap;}
+  .citem .cx{flex:1;min-width:0;}
+  .citem .cn{font-size:13px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .citem .ct{font-size:11px;color:var(--ink-soft);font-weight:600;margin-top:2px;}
+  .nav{position:absolute;left:0;right:0;bottom:0;z-index:20;display:flex;justify-content:space-around;background:rgba(255,255,255,.82);backdrop-filter:blur(14px);padding:10px 8px calc(10px + env(safe-area-inset-bottom));box-shadow:0 -8px 24px rgba(80,110,160,.12);border-top:1px solid rgba(255,255,255,.6);}
+  .navitem{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;color:var(--ink-soft);font-size:11px;font-weight:800;padding:4px 0;transition:color .2s;font-family:inherit;}
+  .navitem .ic{font-size:22px;transition:transform .2s;}
+  .navitem.on{color:var(--green-d);}
+  .navitem.on .ic{transform:translateY(-2px) scale(1.12);}
+  .modal{position:fixed;inset:0;z-index:50;display:none;align-items:flex-end;justify-content:center;}
+  .modal.show{display:flex;animation:fade .25s ease;}
+  .mask{position:absolute;inset:0;background:rgba(40,60,90,.42);backdrop-filter:blur(3px);}
+  .sheet{position:relative;width:100%;max-width:440px;background:#fff;border-radius:28px 28px 0 0;padding:22px 20px calc(26px + env(safe-area-inset-bottom));box-shadow:0 -12px 40px rgba(40,60,90,.25);animation:rise .35s cubic-bezier(.2,.9,.3,1);max-height:88vh;overflow-y:auto;}
+  .sheet.confirm{max-width:360px;text-align:center;}
+  .sheet.confirm .warn-emoji{font-size:40px;margin-bottom:6px;}
+  .sheet.confirm h3{font-size:19px;font-weight:900;color:var(--ink);}
+  .sheet.confirm .desc{font-size:13.5px;color:var(--ink-soft);font-weight:700;margin-top:8px;white-space:pre-line;line-height:1.5;}
+  @keyframes rise{from{transform:translateY(100%)}to{transform:none}}
+  .sheet h3{margin:0 0 4px;font-size:19px;font-weight:900;}
+  .sheet .desc{font-size:12.5px;color:var(--ink-soft);font-weight:700;margin-bottom:16px;}
+  .closex{position:absolute;top:18px;right:18px;width:32px;height:32px;border-radius:50%;border:none;background:#f1f4f8;font-size:18px;color:var(--ink-soft);cursor:pointer;}
+  .dura{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:6px;}
+  .dbtn{border:2px solid var(--line);background:#fafcff;border-radius:16px;padding:14px 4px;font-size:15px;font-weight:800;color:var(--ink);cursor:pointer;transition:.18s;font-family:inherit;}
+  .dbtn .u{font-size:11px;color:var(--ink-soft);font-weight:700;display:block;margin-top:2px;}
+  .dbtn.on{border-color:var(--green);background:linear-gradient(135deg,#eafff7,#e6f5ff);color:var(--green-d);box-shadow:0 6px 14px rgba(52,200,160,.25);}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:13px;font-weight:800;margin-bottom:7px;}
+  .field input,.field textarea,.field select{width:100%;border:2px solid var(--line);border-radius:14px;padding:12px 14px;font-size:14px;font-family:inherit;color:var(--ink);background:#fafcff;outline:none;transition:border .2s;}
+  .field input:focus,.field textarea:focus,.field select:focus{border-color:var(--green);}
+  .field textarea{resize:none;min-height:74px;}
+  .customrow{display:flex;gap:8px;align-items:center;margin-top:4px;}
+  .customrow input{flex:1;}
+  .reset{text-align:center;margin-top:8px;font-size:11.5px;color:var(--ink-soft);font-weight:700;}
+  .reset a{color:var(--coral-d);text-decoration:none;cursor:pointer;}
+  .syncbox{background:linear-gradient(135deg,#f3faff,#f6fbff);border-radius:16px;padding:14px;margin-bottom:12px;}
+  .syncbox .row{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+  .syncbox .code{font-size:22px;font-weight:900;letter-spacing:3px;color:var(--blue);}
+  .syncdot{font-size:12px;font-weight:800;padding:4px 10px;border-radius:999px;background:#eef2f7;color:var(--ink-soft);}
+  .syncdot.ok{background:#e6fbf2;color:var(--green-d);}
+  .syncdot.syn{background:#e6f5ff;color:var(--blue);}
+  .syncdot.err{background:#ffeaea;color:var(--coral-d);}
+  .minirow{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
+  .minirow .btn{flex:1;padding:11px;font-size:13px;}
+  .codeinput{letter-spacing:4px;text-transform:uppercase;}
+  .toast{position:fixed;left:50%;top:18%;transform:translateX(-50%);z-index:80;background:rgba(43,58,74,.94);color:#fff;padding:13px 20px;border-radius:999px;font-size:14px;font-weight:800;box-shadow:0 10px 30px rgba(0,0,0,.25);opacity:0;transition:.3s;pointer-events:none;max-width:90%;text-align:center;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(4px);}
+  canvas.confetti{position:fixed;inset:0;z-index:70;pointer-events:none;}
+  /* ---- 书籍表单/详情增强 ---- */
+  .bform{display:flex;flex-direction:column;gap:16px;margin-top:8px;}
+  .bfield{display:flex;flex-direction:column;gap:7px;}
+  .bfield label{font-size:13px;font-weight:800;color:var(--ink);}
+  .bfield input,.bfield select,.bfield textarea{width:100%;border:2px solid var(--line);border-radius:16px;padding:13px 15px;font-size:15px;font-family:inherit;color:var(--ink);background:#fafcff;outline:none;transition:border .2s,box-shadow .2s;}
+  .bfield input:focus,.bfield select:focus,.bfield textarea:focus{border-color:var(--purple);box-shadow:0 0 0 4px rgba(184,155,255,.15);}
+  .bfield textarea{resize:none;min-height:84px;}
+  .bfield.half{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .bseg{display:flex;background:#f1f4f8;border-radius:16px;padding:4px;gap:4px;}
+  .bseg button{flex:1;border:none;background:transparent;border-radius:13px;padding:11px 4px;font-size:13.5px;font-weight:800;color:var(--ink-soft);cursor:pointer;transition:.2s;font-family:inherit;}
+  .bseg button.on{background:#fff;color:var(--purple);box-shadow:0 4px 10px rgba(80,100,150,.12);}
+  .btn.purple{background:linear-gradient(135deg,var(--purple),var(--coral));color:#fff;box-shadow:0 8px 20px rgba(184,155,255,.45);}
+  .btn.purple:active{transform:scale(.96);}
+  /* 未获得徽章更灰 */
+  .badge{background:#f2f4f7;border-radius:18px;padding:14px 8px 12px;text-align:center;box-shadow:var(--shadow-sm);transition:transform .2s;position:relative;}
+  .badge .ic{font-size:30px;line-height:1;filter:grayscale(1);opacity:.35;transition:.4s;}
+  .badge .nm{font-size:11.5px;font-weight:800;margin-top:7px;color:#9aa8bc;}
+  .badge.on .ic{filter:none;opacity:1;animation:pop .6s ease;}
+  .badge.on .nm{color:var(--ink);}
+  .badge.on{background:linear-gradient(135deg,#fff,#f3fff9);box-shadow:0 8px 20px rgba(52,200,160,.28);}
+  /* 打卡绑定书籍 */
+  .booksel{background:#f6f8fc;border-radius:16px;padding:12px 14px;margin-bottom:14px;}
+  .booksel label{display:block;font-size:12px;font-weight:800;color:var(--ink-soft);margin-bottom:6px;}
+  .booksel select{width:100%;border:2px solid var(--line);border-radius:12px;padding:11px 12px;font-size:14px;font-weight:700;color:var(--ink);background:#fff;outline:none;}
+  .booksel .empty{font-size:13px;color:var(--coral-d);font-weight:700;}
+  .pagerow{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  /* 书籍详情 */
+  .bdetail{text-align:center;padding:4px 0 10px;}
+  .bdetail .bcover{width:88px;height:116px;border-radius:16px;margin:0 auto 14px;display:grid;place-items:center;color:#fff;font-size:36px;font-weight:900;box-shadow:0 12px 28px rgba(0,0,0,.18);}
+  .bdetail .btitle{font-size:19px;font-weight:900;margin-bottom:6px;}
+  .bdetail .bmeta{font-size:13px;font-weight:700;color:var(--ink-soft);margin-bottom:14px;}
+  .bdetail .bprog{margin-bottom:6px;}
+  .bdetail .bprognum{font-size:12px;font-weight:800;color:var(--ink-soft);margin-top:6px;}
+  .btagbar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:18px;}
+  .btagbar span{font-size:12px;font-weight:800;padding:5px 12px;border-radius:999px;}
+  .btimeline{position:relative;padding-left:22px;}
+  .btimeline::before{content:"";position:absolute;left:6px;top:8px;bottom:8px;width:3px;background:linear-gradient(var(--green),var(--blue));border-radius:3px;opacity:.25;}
+  .btline{position:relative;padding-bottom:16px;}
+  .btline:last-child{padding-bottom:0;}
+  .btline::before{content:"";position:absolute;left:-19px;top:5px;width:11px;height:11px;border-radius:50%;background:#fff;border:3px solid var(--green);box-shadow:0 2px 6px rgba(52,200,160,.35);z-index:1;}
+  .btline .tt{font-size:12px;font-weight:800;color:var(--ink-soft);margin-bottom:4px;}
+  .btline .tc{background:#fff;border-radius:14px;padding:11px 13px;box-shadow:var(--shadow-sm);}
+  .btline .tc .min{font-size:15px;font-weight:900;color:var(--green-d);margin-bottom:3px;}
+  .btline .tc .note{font-size:13px;font-weight:600;color:var(--ink);line-height:1.45;white-space:pre-wrap;}
+  .btline .tc .pages{font-size:11px;font-weight:700;color:var(--blue);margin-top:5px;}
+  .bdacts{display:flex;gap:10px;margin-top:18px;}
+  .bdacts .btn{flex:1;}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <div class="bg-deco" id="bgDeco"></div>
+
+  <div class="scroll">
+    <!-- 首页 -->
+    <section class="page active" id="page-home">
+      <div class="topbar">
+        <div class="hi">你好，<span id="hiName">珈珈</span> 👋<small id="hiDate">今天也是阅读的一天</small></div>
+        <div class="datepill" id="datePill">—</div>
+      </div>
+
+      <div class="card profile" data-act="editProfile" style="cursor:pointer">
+        <div class="avatar" id="pAvatar">👧</div>
+        <div><div class="pname" id="pName">珈珈</div><div class="pmeta" id="pMeta">6岁 · 小读者</div></div>
+        <div class="lvpill" id="lvPill">Lv.1</div>
+      </div>
+
+      <div class="card">
+        <div class="lvhead"><b id="lvName">阅读萌芽</b><span id="lvExp">经验值 0</span></div>
+        <div class="bar"><i id="lvBar" style="width:0%"></i></div>
+        <div class="lvfoot"><span id="lvFrom">Lv.1</span><span id="lvTo">距下一等级还差 100 分</span></div>
+      </div>
+
+      <div class="stats">
+        <div class="stat"><div class="num" id="sMin">0</div><div class="lab">累计阅读(分钟)</div></div>
+        <div class="stat"><div class="num" id="sStreak">0</div><div class="lab">连续阅读(天)</div></div>
+        <div class="stat"><div class="num" id="sBook">0</div><div class="lab">已读(本)</div></div>
+        <div class="stat"><div class="num" id="sBadge">0</div><div class="lab">徽章(枚)</div></div>
+      </div>
+
+      <div class="card goal">
+        <div class="ttl">🎯 今日阅读目标 <span id="goalNum">20</span> 分钟</div>
+        <div class="sub" id="goalSub">今天还没开始哦，去读一会儿吧～</div>
+        <div class="goalbar"><i id="goalBar" style="width:0%"></i></div>
+        <div class="btns" id="goalBtns">
+          <button class="btn primary" data-act="start">▶ 开始阅读</button>
+          <button class="btn sun" data-act="finishToday">✓ 完成今日阅读</button>
+        </div>
+        <div class="timer" id="timerBox" style="display:none">
+          <div class="tnum" id="tNum">00:00</div>
+          <div class="tsub" id="tSub">已读 0 分钟</div>
+          <div class="btns">
+            <button class="btn sun" data-act="stopTimer">⏹ 结束并记录</button>
+            <button class="btn ghost" data-act="cancelTimer">✕ 取消</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" id="todayCard">
+        <div class="sec-ttl">📝 今日打卡</div>
+        <div id="todayList"></div>
+      </div>
+
+      <div class="cheer">
+        <div class="em" id="cheerEm">🌱</div>
+        <div><div class="tx" id="cheerTx">今天也迈出了第一步。</div><div class="hx" id="cheerHx"></div></div>
+      </div>
+
+      <div class="sec-ttl">🏅 我的徽章 <span class="more" data-act="gotoBadges">查看全部</span></div>
+      <div class="badges" id="badges"></div>
+    </section>
+
+    <!-- 书架 -->
+    <section class="page" id="page-books">
+      <div class="topbar"><div class="hi">📚 我的书架</div></div>
+      <div class="tabs" id="bookTabs"></div>
+      <div class="books" id="books"></div>
+    </section>
+
+    <!-- 成长地图 -->
+    <section class="page" id="page-map">
+      <div class="mapwrap">
+        <div class="maphead"><div class="t">🗺️ 阅读成长地图</div><div class="s">每读完一本书、每坚持一天，就向前走一步 · <span id="mapCount">已点亮 0 / 21 站</span></div></div>
+        <div class="path" id="mapPath"></div>
+        <div class="island">🏝️</div>
+      </div>
+    </section>
+
+    <!-- 徽章 -->
+    <section class="page" id="page-badges">
+      <div class="topbar"><div class="hi">🏅 我的徽章</div></div>
+      <div class="card">
+        <div class="sec-ttl" id="badgeHead">已解锁 0 / 18 枚</div>
+        <div class="badges" id="badgesPage"></div>
+      </div>
+      <div class="cheer">
+        <div class="em">🏅</div>
+        <div><div class="tx" id="badgeCheer">每解锁一枚徽章，都是一次小小的成长。</div></div>
+      </div>
+    </section>
+
+    <!-- 日历 -->
+    <section class="page" id="page-cal">
+      <div class="topbar"><div class="hi">🗓️ 阅读日历</div></div>
+      <div class="card">
+        <div class="calhead">
+          <div class="sec-ttl">✨ 读过的每一天，都在悄悄发光</div>
+          <div class="calnav">
+            <button class="btn ghost" data-act="calPrev">‹</button>
+            <span id="calTitle"></span>
+            <button class="btn ghost" data-act="calNext">›</button>
+          </div>
+        </div>
+        <div class="calgrid" id="calGrid"></div>
+      </div>
+      <div class="card">
+        <div class="sec-ttl">📝 最近打卡</div>
+        <div id="recentList"></div>
+      </div>
+    </section>
+
+    <!-- 报告 -->
+    <section class="page" id="page-report">
+      <div class="topbar"><div class="hi">📊 阅读报告</div></div>
+      <div class="report-stats" id="reportStats"></div>
+      <div class="card chartcard">
+        <div class="ttl" style="flex-wrap:wrap;row-gap:8px;">📈 <span id="trendTitle">本周阅读趋势</span>
+          <span class="segbar">
+            <button class="segbtn on" data-act="trendWeek" id="segWeek">本周</button>
+            <button class="segbtn" data-act="trendMonth" id="segMonth">本月</button>
+            <button class="segbtn" data-act="trendLast" id="segLast">上月</button>
+          </span>
+        </div>
+        <div class="chart" id="chart"></div>
+      </div>
+      <div class="card">
+        <div class="sec-ttl">⚙️ 设置 · 家庭共享</div>
+        <div class="syncbox" id="syncBox"></div>
+        <div class="minirow">
+          <button class="btn ghost" data-act="export">⬇️ 导出备份</button>
+          <button class="btn ghost" data-act="import">⬆️ 导入备份</button>
+        </div>
+        <div class="minirow">
+          <button class="btn ghost" data-act="downloadApp">💾 下载本应用 HTML</button>
+        </div>
+        <div class="minirow">
+          <button class="btn danger block" data-act="reset">🗑️ 清空全部数据</button>
+        </div>
+        <input type="file" id="importFile" accept="application/json" style="display:none" />
+      </div>
+      <div class="cheer" style="margin-top:14px;">
+        <div class="em" id="reportCheerEm">⭐</div>
+        <div><div class="tx" id="reportCheer">每一次翻开书，都是在长大。</div></div>
+      </div>
+    </section>
+  </div>
+
+  <button class="fabadd" data-act="addBook" title="添加书籍">＋</button>
+
+  <nav class="nav" id="nav">
+    <button class="navitem on" data-page="home"><span class="ic">🏠</span>首页</button>
+    <button class="navitem" data-page="books"><span class="ic">📚</span>书架</button>
+    <button class="navitem" data-page="map"><span class="ic">🗺️</span>地图</button>
+    <button class="navitem" data-page="badges"><span class="ic">🏅</span>徽章</button>
+    <button class="navitem" data-page="cal"><span class="ic">🗓️</span>日历</button>
+    <button class="navitem" data-page="report"><span class="ic">📊</span>报告</button>
+  </nav>
+</div>
+
+<!-- 打卡弹窗 -->
+<div class="modal" id="mCheckin">
+  <div class="mask" data-act="closeModal"></div>
+  <div class="sheet">
+    <button class="closex" data-act="closeModal">✕</button>
+    <h3>✨ 阅读打卡</h3>
+    <div class="desc" id="checkinDesc">今天读了多久呀？选一个时间吧～</div>
+    <div class="booksel" id="bookSelBox">
+      <label>📖 本次读的是哪本书</label>
+      <select id="checkinBook"></select>
+    </div>
+    <div class="dura" id="duraGrid"></div>
+    <div class="minput">
+      <button class="mstep" type="button" data-act="minMinus">−</button>
+      <div class="mwrap">
+        <input type="number" id="customMin" min="1" max="600" placeholder="0" />
+        <span class="munit">分钟</span>
+      </div>
+      <button class="mstep" type="button" data-act="minPlus">＋</button>
+    </div>
+    <label class="finishchk"><input type="checkbox" id="finishBookChk" /> 📕 这次把这本书读完啦（不必填页码）</label>
+    <div class="field pagerow" id="pageRow" style="margin-top:12px;">
+      <div>
+        <label>读到第几页</label>
+        <input type="number" id="pageEnd" min="1" placeholder="页码" />
+      </div>
+      <div>
+        <label>本次读了多少页</label>
+        <input type="number" id="pagesRead" min="1" placeholder="页数" />
+      </div>
+    </div>
+    <div class="field" style="margin-top:6px;">
+      <label>今天读到了什么？(选填)</label>
+      <textarea id="noteInput" placeholder="比如：小树终于长高了，我真为它高兴！"></textarea>
+    </div>
+    <button class="btn primary block" data-act="submitCheckin">完成打卡 🎉</button>
+  </div>
+</div>
+
+<!-- 书籍弹窗 -->
+<div class="modal" id="mBook">
+  <div class="mask" data-act="closeModal"></div>
+  <div class="sheet">
+    <button class="closex" data-act="closeModal">✕</button>
+    <h3 id="bookTitle">📖 添加书籍</h3>
+    <div class="desc" id="bookDesc">把想读的书加进来，读完就点亮它！</div>
+    <div class="bform">
+      <div class="bfield"><label>书名</label><input id="bkTitle" placeholder="例如：我想长大" /></div>
+      <div class="bfield"><label>作者</label><input id="bkAuthor" placeholder="例如：某某" /></div>
+      <div class="bfield half">
+        <div><label>分类</label>
+          <select id="bkCat"><option>绘本</option><option>童话</option><option>科普</option><option>诗歌</option><option>桥梁书</option><option>其他</option></select>
+        </div>
+        <div><label>总页数</label><input id="bkTotalPages" type="number" min="1" placeholder="例如：120" /></div>
+      </div>
+      <div class="bfield">
+        <label>阅读状态</label>
+        <div class="bseg" id="bkStatusSeg">
+          <button type="button" data-act="setBookStatus" data-value="want">💡 想读</button>
+          <button type="button" data-act="setBookStatus" data-value="reading">📖 正在读</button>
+          <button type="button" data-act="setBookStatus" data-value="finished">✅ 已读完</button>
+        </div>
+        <input type="hidden" id="bkStatus" value="want" />
+      </div>
+      <div class="bfield"><label>📝 读书笔记 / 评论（选填）</label>
+        <textarea id="bkNote" placeholder="读完这本书想说点什么？喜欢哪一段？"></textarea>
+      </div>
+    </div>
+    <button class="btn purple block" data-act="saveBook" style="margin-top:6px;">保存 💾</button>
+    <button class="btn ghost block" id="bkDelete" data-act="deleteBook" style="margin-top:12px;display:none;">删除这本书 🗑️</button>
+  </div>
+</div>
+
+<!-- 书籍详情弹窗 -->
+<div class="modal" id="mBookDetail">
+  <div class="mask" data-act="closeModal"></div>
+  <div class="sheet">
+    <button class="closex" data-act="closeModal">✕</button>
+    <div id="bookDetailBody"></div>
+  </div>
+</div>
+
+<!-- 某天阅读详情弹窗 -->
+<div class="modal" id="mDay">
+  <div class="mask" data-act="closeModal"></div>
+  <div class="sheet">
+    <button class="closex" data-act="closeModal">✕</button>
+    <h3 id="dayTitle" style="font-size:19px;font-weight:900;">这一天</h3>
+    <div class="desc" id="daySub" style="font-size:13px;color:var(--ink-soft);font-weight:700;margin-top:4px;"></div>
+    <div id="dayList" style="margin-top:14px;"></div>
+  </div>
+</div>
+
+<!-- 二次确认弹窗 -->
+<div class="modal" id="mConfirm">
+  <div class="mask" data-act="closeModal"></div>
+  <div class="sheet confirm">
+    <div class="warn-emoji">⚠️</div>
+    <h3 id="confirmTitle">确认</h3>
+    <div class="desc" id="confirmMsg"></div>
+    <div class="minirow" style="justify-content:center;gap:10px;margin-top:18px;">
+      <button class="btn ghost" data-act="confirmCancel">取消</button>
+      <button class="btn danger" data-act="confirmOk">确定清空</button>
+    </div>
+  </div>
+</div>
+
+<!-- 每日鼓励弹窗：每天第一次打开弹出 -->
+<div class="modal" id="mDaily">
+  <div class="mask" data-act="closeModal"></div>
+  <div class="sheet confirm">
+    <div class="warn-emoji" id="dailyEm" style="font-size:56px">🌟</div>
+    <h3>今日阅读寄语</h3>
+    <div class="desc" id="dailyMsg"></div>
+    <div class="minirow" style="justify-content:center;margin-top:18px;">
+      <button class="btn" data-act="closeModal">收到，开始阅读！</button>
+    </div>
+  </div>
+</div>
+
+<!-- 家庭共享弹窗 -->
+<div class="modal" id="mFamily">
+  <div class="mask" data-act="closeModal"></div>
+  <div class="sheet">
+    <button class="closex" data-act="closeModal">✕</button>
+    <h3>👨‍👩‍👧 家庭共享</h3>
+    <div class="desc">创建一个共享码，另一台手机输入同样的码，就能一起看珈珈的阅读记录（实时同步）。</div>
+    <div class="field"><label>我的共享码</label>
+      <div class="customrow">
+        <input class="codeinput" id="familyInput" maxlength="6" placeholder="6位字母数字" />
+        <button class="btn ghost" style="flex:none;padding:12px 16px" data-act="genCode">随机</button>
+      </div>
+    </div>
+    <button class="btn primary block" data-act="createFamily">✅ 创建并开启共享</button>
+    <button class="btn ghost block" data-act="joinFamily" style="margin-top:10px;">🔑 输入码加入（已有共享）</button>
+    <button class="btn ghost block" data-act="localOnly" style="margin-top:10px;">📱 仅本机使用</button>
+  </div>
+</div>
+
+<!-- 成长地图节点详情弹窗 -->
+<div class="modal" id="mNode">
+  <div class="mask" data-act="closeModal"></div>
+  <div class="sheet">
+    <button class="closex" data-act="closeModal">✕</button>
+    <div id="nodeDetail"></div>
+  </div>
+</div>
+
+<!-- 个人档案弹窗（首次进入自动弹出，之后点首页档案卡可改） -->
+<div class="modal" id="mProfile">
+  <div class="mask" data-act="closeModal"></div>
+  <div class="sheet">
+    <button class="closex" data-act="closeModal">✕</button>
+    <h3 id="pfTitle">👋 欢迎！先认识一下小读者</h3>
+    <div class="desc" id="pfDesc">填上名字、挑个喜欢的头像，就开始你的阅读冒险啦。</div>
+    <div class="field"><label>孩子的名字</label>
+      <input id="pfName" maxlength="12" placeholder="例如：珈珈" />
+    </div>
+    <div class="field"><label>生日（选填，自动算「几岁几个月」）</label>
+      <div class="bday">
+        <select id="pfYear"></select><span class="blab">年</span>
+        <select id="pfMonth"></select><span class="blab">月</span>
+        <select id="pfDay"></select><span class="blab">日</span>
+      </div>
+    </div>
+    <div class="field"><label>或用一张照片当头像</label>
+      <div class="photorow">
+        <div class="phprev" id="phPrev">👧</div>
+        <div style="flex:1">
+          <button class="btn ghost block" data-act="pickPhoto">🖼️ 从本机选一张</button>
+          <button class="btn ghost block" data-act="clearPhoto" style="margin-top:8px">↩️ 用回表情头像</button>
+        </div>
+      </div>
+      <input type="file" id="photoFile" accept="image/*" style="display:none" />
+    </div>
+    <div class="field"><label>选一个头像</label>
+      <div class="avpick" id="pfAvatars"></div>
+    </div>
+    <button class="btn primary block" data-act="saveProfile">💾 保存并开始</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Supabase 按需动态加载：CONFIG 填了才加载，避免阻塞页面导致按钮点不动 -->
+<script>
+/* ===================== 云端配置（填了才同步，不填就是纯本地） ===================== */
+const CONFIG={SUPABASE_URL:'https://turhfmcyzvvxewlyvxoz.supabase.co', SUPABASE_ANON_KEY:'sb_publishable_U2J56gCDMITGSaLL9xcW-Q_dNn9-vEK'};
+let SB=null;
+async function initSupabase(){
+  if(!CONFIG.SUPABASE_URL)return;
+  if(typeof supabase!=='undefined'){try{SB=supabase.createClient(CONFIG.SUPABASE_URL,CONFIG.SUPABASE_ANON_KEY);}catch(e){}return;}
+  await new Promise(res=>{const s=document.createElement('script');
+    s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+    s.onload=()=>{try{SB=supabase.createClient(CONFIG.SUPABASE_URL,CONFIG.SUPABASE_ANON_KEY);}catch(e){}res();};
+    s.onerror=()=>res();document.head.appendChild(s);});
+}
+
+/* ===================== 数据层 ===================== */
+/* 10 级成长阶梯：门槛拉高，让升级成为长期目标（约 20 分钟/天 ≈ 10 分/天，满级约需 3~4 年） */
+const LEVELS=[
+  {lv:1,name:'阅读萌芽',min:0,max:99},
+  {lv:2,name:'阅读种子',min:100,max:299},
+  {lv:3,name:'阅读新芽',min:300,max:599},
+  {lv:4,name:'阅读小树',min:600,max:999},
+  {lv:5,name:'阅读大树',min:1000,max:1999},
+  {lv:6,name:'阅读森林',min:2000,max:3499},
+  {lv:7,name:'阅读高山',min:3500,max:5999},
+  {lv:8,name:'阅读大海',min:6000,max:9999},
+  {lv:9,name:'阅读星空',min:10000,max:17999},
+  {lv:10,name:'阅读宇宙',min:18000,max:Infinity},
+];
+const GOAL=20, DURAS=[5,10,20,30,60], KEY='reading_growth_map_v2';
+
+function uid(){return Math.random().toString(36).slice(2,9);}
+function pad(n){return n<10?'0'+n:''+n;}
+function dateStr(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
+function todayStr(){return dateStr(new Date());}
+function addDays(n){const d=new Date();d.setDate(d.getDate()+n);return d;}
+function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function genCode(){const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let s='';for(let i=0;i<6;i++)s+=c[Math.floor(Math.random()*c.length)];return s;}
+
+function checkinPoints(min){
+  if(min>=60)return 30; if(min>=30)return 15; if(min>=20)return 10; if(min>=10)return 5; return 2;
+}
+function seed(){
+  return {
+    child:{name:'',age:6,avatar:'👧',photo:null,birthday:'',setup:false,updatedAt:0},
+    settings:{familyCode:null},
+    books:[],
+    checkins:[],
+    deleted:{books:{},checkins:{}}, // 删除墓碑：id -> 删除时间戳，随同步传播以在各端真正移除
+  };
+}
+
+/* ---- IndexedDB（主） + localStorage（回退） ---- */
+let _db=null;
+function openDB(){return new Promise((res,rej)=>{
+  if(!window.indexedDB){rej('no');return;}
+  const r=indexedDB.open('rgm_db_v2',1);
+  r.onupgradeneeded=e=>{const db=e.target.result;
+    if(!db.objectStoreNames.contains('kv'))db.createObjectStore('kv');};
+  r.onsuccess=e=>{_db=e.target.result;res(_db);};
+  r.onerror=()=>rej(e.target.error);
+});}
+function idbGet(store,key){return new Promise((res)=>{if(!_db){res(null);return;}
+  const tx=_db.transaction(store,'readonly').objectStore(store).get(key);
+  tx.onsuccess=()=>res(tx.result||null);tx.onerror=()=>res(null);});}
+function idbSet(store,key,val){return new Promise((res)=>{if(!_db){res();return;}
+  const tx=_db.transaction(store,'readwrite');tx.objectStore(store).put(val,key);
+  tx.oncomplete=()=>res();tx.onerror=()=>res();});}
+
+let state;
+async function loadState(){
+  const tryLoad=async()=>{
+    try{await openDB();}catch(e){}
+    let s=await idbGet('kv','state');
+    if(s)return s;
+    try{const ls=localStorage.getItem(KEY);if(ls)return JSON.parse(ls);}catch(e){}
+    return null;
+  };
+  // 安全网：仅 file:// 下 IndexedDB 可能卡住时才用 2 秒兜底；
+  // http/https 直接等待，避免误判为「无数据」后把已保存状态清空（否则会反复弹出设置）
+  if(location.protocol==='file:'){
+    return Promise.race([tryLoad(),new Promise(res=>setTimeout(()=>res(null),2000))]);
+  }
+  return await tryLoad();
+}
+async function persist(){ // 仅落本地存储，不触发云端推送，避免拉取回环
+  try{
+    if(_db){await idbSet('kv','state',state);}
+    else{localStorage.setItem(KEY,JSON.stringify(state));}
+  }catch(e){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(_){}}
+}
+function save(){syncEarnedLog();persist();schedulePush();} // 用户改动：本地保存 + 安排云端推送
+
+/* 维护「已解锁徽章」的有序记录（按首次解锁的先后），用于首页只展示最近 2 枚 +「+N」 */
+function syncEarnedLog(){
+  if(!state.child)return;
+  if(!Array.isArray(state.child.earned))state.child.earned=[];
+  const bs=badgeState(snapshot());
+  BADGES.forEach(b=>{if(bs[b.id]&&!state.child.earned.includes(b.id))state.child.earned.push(b.id);});
+}
+
+/* ===================== 派生计算 ===================== */
+function totalMinutes(){return state.checkins.reduce((a,c)=>a+c.minutes,0);}
+function todayMinutes(){const t=todayStr();return state.checkins.filter(c=>c.date===t).reduce((a,c)=>a+c.minutes,0);}
+function finishedBooks(){return state.books.filter(b=>b.status==='finished');}
+function finishedCount(){return finishedBooks().length;}
+function parseLocal(s){const p=s.split('-');return new Date(+p[0],+p[1]-1,+p[2]);}
+function isNextDay(a,b){const d=parseLocal(a);d.setDate(d.getDate()+1);return dateStr(d)===b;}
+function computeStreaks(){
+  const days=new Set(state.checkins.map(c=>c.date));
+  let cur=0;let d=new Date();if(!days.has(dateStr(d)))d.setDate(d.getDate()-1);
+  while(days.has(dateStr(d))){cur++;d.setDate(d.getDate()-1);}
+  const arr=[...days].sort();let max=0,run=0,prev=null;
+  for(const day of arr){if(prev&&isNextDay(prev,day))run++;else run=1;max=Math.max(max,run);prev=day;}
+  return {cur,max:max||0};
+}
+function getPoints(){return state.checkins.reduce((a,c)=>a+c.points,0)+finishedCount()*30+(computeStreaks().max>=7?50:0);}
+function getLevel(p){for(let i=0;i<LEVELS.length;i++){if(p<=LEVELS[i].max)return {...LEVELS[i],idx:i};}
+  return {...LEVELS[LEVELS.length-1],idx:LEVELS.length-1};}
+function snapshot(){const points=getPoints();const lv=getLevel(points);const st=computeStreaks();
+  return {points,lv,streak:st.cur,maxStreak:st.max,total:totalMinutes(),today:todayMinutes(),finished:finishedCount()};}
+
+const BADGES=[
+  {id:'first',icon:'🌱',name:'阅读第一步',desc:'完成第一次阅读打卡',test:s=>s.checkinsCount>0},
+  {id:'streak3',icon:'✨',name:'坚持3天',desc:'连续阅读满 3 天',test:s=>s.maxStreak>=3},
+  {id:'streak7',icon:'🔥',name:'坚持7天',desc:'连续阅读满 7 天',test:s=>s.maxStreak>=7},
+  {id:'streak14',icon:'⭐',name:'坚持小能手',desc:'连续阅读满 14 天',test:s=>s.maxStreak>=14},
+  {id:'streak30',icon:'🏅',name:'坚持30天',desc:'连续阅读满 30 天',test:s=>s.maxStreak>=30},
+  {id:'streak60',icon:'🛡️',name:'坚持60天',desc:'连续阅读满 60 天',test:s=>s.maxStreak>=60},
+  {id:'bookworm',icon:'📚',name:'小小书虫',desc:'读完第 1 本书',test:s=>s.finished>=1},
+  {id:'books3',icon:'📖',name:'三本书啦',desc:'累计读完 3 本书',test:s=>s.finished>=3},
+  {id:'books10',icon:'📗',name:'小小藏书家',desc:'累计读完 10 本书',test:s=>s.finished>=10},
+  {id:'min100',icon:'⏳',name:'百分钟达成',desc:'累计阅读满 100 分钟',test:s=>s.total>=100},
+  {id:'traveler',icon:'⏰',name:'时间旅行者',desc:'单次阅读满 60 分钟',test:s=>s.has60},
+  {id:'min500',icon:'🕰️',name:'阅读长跑选手',desc:'累计阅读满 500 分钟',test:s=>s.total>=500},
+  {id:'earlybird',icon:'🌅',name:'晨读小达人',desc:'早上 8 点前读过书',test:s=>s.earlyBird},
+  {id:'nightowl',icon:'🌙',name:'睡前故事家',desc:'晚上 9 点后读过书',test:s=>s.nightOwl},
+  {id:'note',icon:'✍️',name:'小小记录员',desc:'写下第一条读后感',test:s=>s.hasNote},
+  {id:'hero10',icon:'🦸',name:'阅读小英雄',desc:'累计打卡满 10 次',test:s=>s.checkinsCount>=10},
+  {id:'goal',icon:'🎯',name:'目标达成',desc:'单次完成 20 分钟目标',test:s=>s.hasGoal},
+  {id:'weekfull',icon:'🌈',name:'一周全勤',desc:'本周 7 天全部打卡',test:s=>s.weekFull},
+  {id:'expert',icon:'🏆',name:'阅读达人',desc:'积分达到 300 分',test:s=>s.points>=300},
+  {id:'master',icon:'🎓',name:'阅读大师',desc:'积分达到 1000 分',test:s=>s.points>=1000},
+  {id:'sage',icon:'🌟',name:'阅读宗师',desc:'积分达到 3000 分',test:s=>s.points>=3000},
+  {id:'myth',icon:'👑',name:'阅读传奇',desc:'积分达到 10000 分',test:s=>s.points>=10000},
+  /* —— 进阶挑战徽章 —— */
+  {id:'streak100',icon:'💯',name:'百日坚持',desc:'连续阅读满 100 天',test:s=>s.maxStreak>=100},
+  {id:'books30',icon:'🏙️',name:'书山攀登者',desc:'累计读完 30 本书',test:s=>s.finished>=30},
+  {id:'books50',icon:'🏔️',name:'学富五车',desc:'累计读完 50 本书',test:s=>s.finished>=50},
+  {id:'books60',icon:'🎠',name:'六十本书',desc:'累计读完 60 本书',test:s=>s.finished>=60},
+  {id:'books80',icon:'🎡',name:'八十本书',desc:'累计读完 80 本书',test:s=>s.finished>=80},
+  {id:'books100',icon:'🏯',name:'百本珍藏',desc:'累计读完 100 本书',test:s=>s.finished>=100},
+  {id:'books150',icon:'🏰',name:'一百五十本',desc:'累计读完 150 本书',test:s=>s.finished>=150},
+  {id:'books200',icon:'🐉',name:'两百本传家',desc:'累计读完 200 本书',test:s=>s.finished>=200},
+  {id:'min1000',icon:'🧭',name:'千分钟旅程',desc:'累计阅读满 1000 分钟',test:s=>s.total>=1000},
+  {id:'min2000',icon:'🛶',name:'扬帆远航',desc:'累计阅读满 2000 分钟',test:s=>s.total>=2000},
+  {id:'min3000',icon:'⛵',name:'远航水手',desc:'累计阅读满 3000 分钟',test:s=>s.total>=3000},
+  {id:'min4000',icon:'🌊',name:'破浪前行',desc:'累计阅读满 4000 分钟',test:s=>s.total>=4000},
+  {id:'min10000',icon:'🚀',name:'万分钟阅读王',desc:'累计阅读满 10000 分钟',test:s=>s.total>=10000},
+  {id:'note10',icon:'📝',name:'灵感作家',desc:'写下 10 条读后感',test:s=>s.noteCount>=10},
+  {id:'check100',icon:'🎊',name:'百次打卡庆典',desc:'累计打卡满 100 次',test:s=>s.checkinsCount>=100},
+  {id:'goal10',icon:'🎪',name:'目标收割机',desc:'完成 10 次 20 分钟目标打卡',test:s=>s.goalCount>=10},
+];
+function badgeState(s){const cs=state.checkins;
+  const ext={...s,checkinsCount:cs.length,
+    has60:cs.some(c=>c.minutes>=60),
+    noteCount:cs.filter(c=>(c.note||'').trim().length>0).length,
+    goalCount:cs.filter(c=>c.minutes>=GOAL).length,
+    hasNote:cs.some(c=>(c.note||'').trim().length>0),
+    hasGoal:cs.some(c=>c.minutes>=GOAL),
+    earlyBird:cs.some(c=>new Date(c.ts).getHours()<8),
+    nightOwl:cs.some(c=>new Date(c.ts).getHours()>=21),
+    weekFull:last7().arr.length===7&&last7().arr.every(x=>x.m>0)};
+  const o={};BADGES.forEach(b=>o[b.id]=!!b.test(ext));return o;}
+const MAP=[
+  /* —— 启程·打卡 —— */
+  {id:'start',icon:'🌱',name:'阅读启程',desc:'完成第一次阅读打卡',test:s=>s.checkinsCount>=1,target:1,cur:s=>s.checkinsCount,unit:'次'},
+  {id:'c10',icon:'🍀',name:'十次足迹',desc:'累计打卡 10 次',test:s=>s.checkinsCount>=10,target:10,cur:s=>s.checkinsCount,unit:'次'},
+  {id:'c50',icon:'🌵',name:'五十次远行',desc:'累计打卡 50 次',test:s=>s.checkinsCount>=50,target:50,cur:s=>s.checkinsCount,unit:'次'},
+  /* —— 坚持·连续天数 —— */
+  {id:'s7',icon:'🌿',name:'坚持 7 天',desc:'连续阅读满 7 天',test:s=>s.maxStreak>=7,target:7,cur:s=>s.maxStreak,unit:'天'},
+  {id:'s30',icon:'⛰️',name:'坚持 30 天',desc:'连续阅读满 30 天',test:s=>s.maxStreak>=30,target:30,cur:s=>s.maxStreak,unit:'天'},
+  {id:'s100',icon:'💯',name:'百日长征',desc:'连续阅读满 100 天',test:s=>s.maxStreak>=100,target:100,cur:s=>s.maxStreak,unit:'天'},
+  /* —— 书本 —— */
+  {id:'b1',icon:'🌰',name:'第一本书',desc:'累计读完 1 本书',test:s=>s.finished>=1,target:1,cur:s=>s.finished,unit:'本'},
+  {id:'b5',icon:'🌳',name:'读完 5 本书',desc:'累计读完 5 本书',test:s=>s.finished>=5,target:5,cur:s=>s.finished,unit:'本'},
+  {id:'b20',icon:'🌋',name:'读完 20 本书',desc:'累计读完 20 本书',test:s=>s.finished>=20,target:20,cur:s=>s.finished,unit:'本'},
+  {id:'b50',icon:'🏔️',name:'读完 50 本书',desc:'累计读完 50 本书',test:s=>s.finished>=50,target:50,cur:s=>s.finished,unit:'本'},
+  /* —— 阅读时长 —— */
+  {id:'m100',icon:'🏕️',name:'阅读 100 分钟',desc:'累计阅读 100 分钟',test:s=>s.total>=100,target:100,cur:s=>s.total,unit:'分钟'},
+  {id:'m500',icon:'🏝️',name:'阅读 500 分钟',desc:'累计阅读 500 分钟',test:s=>s.total>=500,target:500,cur:s=>s.total,unit:'分钟'},
+  {id:'m1000',icon:'🌲',name:'阅读 1000 分钟',desc:'累计阅读 1000 分钟',test:s=>s.total>=1000,target:1000,cur:s=>s.total,unit:'分钟'},
+  {id:'m5000',icon:'🗻',name:'阅读 5000 分钟',desc:'累计阅读 5000 分钟',test:s=>s.total>=5000,target:5000,cur:s=>s.total,unit:'分钟'},
+  {id:'m10000',icon:'🚀',name:'万分钟飞行',desc:'累计阅读 10000 分钟',test:s=>s.total>=10000,target:10000,cur:s=>s.total,unit:'分钟'},
+  /* —— 积分·终极旅程 —— */
+  {id:'expert',icon:'🏵️',name:'阅读达人',desc:'积分达到 300 分',test:s=>s.points>=300,target:300,cur:s=>s.points,unit:'分'},
+  {id:'master',icon:'🏆',name:'阅读大师',desc:'积分达到 1000 分',test:s=>s.points>=1000,target:1000,cur:s=>s.points,unit:'分'},
+  {id:'legend',icon:'👑',name:'阅读宗师',desc:'积分达到 3000 分',test:s=>s.points>=3000,target:3000,cur:s=>s.points,unit:'分'},
+  {id:'star',icon:'🌟',name:'摘星之旅',desc:'积分达到 6000 分',test:s=>s.points>=6000,target:6000,cur:s=>s.points,unit:'分'},
+  {id:'galaxy',icon:'🌌',name:'穿越星河',desc:'积分达到 10000 分',test:s=>s.points>=10000,target:10000,cur:s=>s.points,unit:'分'},
+  {id:'cosmo',icon:'🪐',name:'宇宙尽头',desc:'积分达到 18000 分',test:s=>s.points>=18000,target:18000,cur:s=>s.points,unit:'分'},
+];
+function mapExt(s){return {...s,checkinsCount:state.checkins.length};}
+function mapState(s){const ext=mapExt(s);
+  const o={};MAP.forEach(m=>o[m.id]=!!m.test(ext));return o;}
+
+/* ===================== 渲染 ===================== */
+function renderHome(){
+  const s=snapshot();const bs=badgeState(s);let on=0;for(const k in bs)if(bs[k])on++;
+  document.getElementById('hiName').textContent=state.child.name;
+  const pa=document.getElementById('pAvatar');
+  if(pa)pa.innerHTML=state.child.photo?'<img src="'+state.child.photo+'" style="width:100%;height:100%;object-fit:cover;border-radius:22px">':(state.child.avatar||'👧');
+  document.getElementById('pName').textContent=state.child.name||'小读者';
+  const ageShow=state.child.birthday?ageText(state.child.birthday):((state.child.age||6)+'岁');
+  document.getElementById('pMeta').textContent=ageShow+' · 小读者';
+  document.getElementById('datePill').textContent=todayStr().slice(5);
+  document.getElementById('lvPill').textContent='Lv.'+s.lv.lv;
+  document.getElementById('lvName').textContent=s.lv.name;
+  document.getElementById('lvExp').textContent='经验值 '+s.points;
+  const pct=s.lv.idx<LEVELS.length-1?Math.min(100,Math.round((s.points-s.lv.min)/(s.lv.max-s.lv.min)*100)):100;
+  document.getElementById('lvBar').style.width=pct+'%';
+  document.getElementById('lvFrom').textContent='Lv.'+s.lv.lv+' '+s.lv.name;
+  document.getElementById('lvTo').textContent=s.lv.idx<LEVELS.length-1?'距 '+LEVELS[s.lv.idx+1].name+' 还差 '+(LEVELS[s.lv.idx+1].min-s.points)+' 分':'🏆 已是最高等级！';
+  document.getElementById('sMin').textContent=s.total;
+  document.getElementById('sStreak').textContent=s.streak;
+  document.getElementById('sBook').textContent=s.finished;
+  document.getElementById('sBadge').textContent=on;
+  document.getElementById('goalNum').textContent=GOAL;
+  const tm=todayMinutes();const gp=Math.min(100,Math.round(tm/GOAL*100));
+  document.getElementById('goalBar').style.width=gp+'%';
+  const sub=document.getElementById('goalSub');
+  if(tm>=GOAL)sub.textContent='🎉 今日目标已达成，太棒啦！';
+  else if(tm>0)sub.textContent='已经完成 '+tm+' 分钟，再读 '+(GOAL-tm)+' 分钟就达标！';
+  else sub.textContent='今天还没开始哦，去读一会儿吧～';
+  const m=motivate(s);
+  document.getElementById('cheerEm').textContent=m.em;
+  document.getElementById('cheerTx').textContent=m.tx;
+  document.getElementById('cheerHx').textContent=m.hx;
+  const bg=document.getElementById('badges');bg.innerHTML='';
+  const earned=BADGES.filter(b=>bs[b.id]).map(b=>b.id);
+  // 首页只展示最近 2 枚；其余用「+N」入口引导到徽章页
+  const recent=(state.child.earned||[]).filter(id=>bs[id]).slice(-2);
+  const show=recent.length?recent:BADGES.filter(b=>bs[b.id]).slice(0,2).map(b=>b.id);
+  if(!show.length)bg.innerHTML='<div class="empty" style="grid-column:1/-1">还没有徽章哦，去打卡解锁吧 🌟</div>';
+  show.forEach(id=>{const b=BADGES.find(x=>x.id===id);bg.appendChild(badgeTile(b,true));});
+  if(earned.length>2){const more=document.createElement('div');more.className='badge more';more.style.cursor='pointer';
+    more.innerHTML='<div class="ic">+'+(earned.length-2)+'</div><div class="nm">个徽章</div>';
+    more.onclick=()=>gotoPage('badges');bg.appendChild(more);}
+  renderToday();
+}
+function motivate(s){
+  // 高分段文案跟随实际等级名（10 级体系），不再写死旧称号；副语每日随机
+  if(s.lv.idx>=LEVELS.length-1)return{em:'👑',tx:'你已经是「阅读宇宙」啦！整个星空都在为你鼓掌！',hx:homeSub()};
+  if(s.points>=1000)return{em:'🎓',tx:'你是「'+s.lv.name+'」啦，太了不起！',hx:homeSub()};
+  if(s.maxStreak>=7)return{em:'🎉',tx:'坚持一周，你真的很棒！',hx:'连续阅读 '+s.maxStreak+' 天，点亮了坚持徽章'};
+  if(s.streak>=3)return{em:'🔥',tx:'已经连续阅读 '+s.streak+' 天啦！',hx:s.streak>=6?'再读 1 天就解锁「坚持7天」啦！':'继续加油，习惯正在长出来'};
+  if(s.today>=GOAL)return{em:'🌟',tx:'今天的阅读目标完成啦！',hx:'给自己一个大大的赞'};
+  if(s.finished>=1)return{em:'📚',tx:'一本书完成啦，继续下一段冒险！',hx:''};
+  const need=LEVELS[Math.min(s.lv.idx+1,LEVELS.length-1)].min-s.points;
+  if(need<=40&&need>0)return{em:'⭐',tx:'再读一会儿，就可以升级啦！',hx:'还差 '+need+' 分就到下一等级'};
+  return{em:'🌱',tx:'今天也迈出了第一步。',hx:''};
+}
+
+/* —— 每日鼓励寄语：同一天固定同一条，第二天自动换新 —— */
+const CHEERS=[
+  {em:'🌟',tx:'每一次翻开书，都是一次小小的冒险！'},
+  {em:'📖',tx:'今天的故事，正等着你去发现呢！'},
+  {em:'🚀',tx:'读的书越多，你的小宇宙就越大！'},
+  {em:'🌈',tx:'坚持阅读的你，比彩虹还耀眼！'},
+  {em:'🦁',tx:'勇敢的小读者，今天读点什么好呢？'},
+  {em:'🍎',tx:'每天读一点点，智慧就像苹果一样甜！'},
+  {em:'⭐',tx:'你读过的每一页，都会变成星星照亮你！'},
+  {em:'🐢',tx:'慢慢读也没关系，重要的是今天没有停下来！'},
+  {em:'🎈',tx:'带上好奇心，一起去书里旅行吧！'},
+  {em:'🦋',tx:'书里藏着好多蝴蝶，等你翻页放飞它们！'},
+  {em:'🌱',tx:'阅读的小树苗，每天都在悄悄长高！'},
+  {em:'🏰',tx:'每本书都是一块砖，帮你砌成梦想城堡！'},
+  {em:'🐳',tx:'深潜进书里吧，说不定能遇见大蓝鲸！'},
+  {em:'🔭',tx:'用书做望远镜，能看到更远的世界！'},
+  {em:'🍰',tx:'今天也要给大脑喂一块「故事蛋糕」哦！'},
+  {em:'🦸',tx:'爱读书的孩子，自带超能力！'},
+  {em:'🎵',tx:'读一本好书，就像听了一首好听的歌！'},
+  {em:'☀️',tx:'新的一天，从一段好故事开始吧！'},
+];
+function dailyCheer(){ // 用日期字符串做种子：当天任何时候打开都是同一句，明天自动换
+  const key=todayStr();
+  let h=0;for(let i=0;i<key.length;i++)h=(h*31+key.charCodeAt(i))>>>0;
+  return CHEERS[h%CHEERS.length];
+}
+/* 首页激励副语池：与报告页寄语分开，同日固定、跨天更换 */
+const HXPOOL=[
+  '每一本书都变成了你的翅膀',
+  '书页翻动的声音，就是成长的声音',
+  '你攒下的每一分钟，都在悄悄发光',
+  '读过的每一个字，都会变成脚下的路',
+  '故事里的朋友，正等着你明天回来',
+  '认真读书的你，比星星还闪',
+  '书是最甜的果实，要慢慢品尝呀',
+  '每翻一页，你的世界就变大一点点',
+  '坚持的小种子，已经悄悄发芽啦',
+  '书山再高，你走的每一步都算数',
+  '今天的你，比昨天更博学了一点点',
+  '你的小书架上，正堆满宝藏',
+  '故事吃多了，想象力就会长出翅膀',
+  '明天的故事，也在等你去发现哦',
+];
+function homeSub(){const key='hx'+todayStr();let h=0;for(let i=0;i<key.length;i++)h=(h*31+key.charCodeAt(i))>>>0;return HXPOOL[h%HXPOOL.length];}
+function maybeDailyCheer(){ // 每天第一次打开 app 弹出鼓励弹窗（按本机每天只弹一次）
+  try{
+    const key='rgm_daily_cheer',today=todayStr();
+    if(localStorage.getItem(key)===today)return;
+    localStorage.setItem(key,today);
+    const c=dailyCheer();
+    const em=document.getElementById('dailyEm'),msg=document.getElementById('dailyMsg');
+    if(em)em.textContent=c.em;
+    if(msg)msg.textContent=c.tx;
+    setTimeout(()=>openModal('mDaily'),400); // 稍等页面渲染完再弹，避免被首屏动画盖住
+  }catch(e){}
+}
+function renderToday(){
+  const box=document.getElementById('todayList');const t=todayStr();
+  const list=state.checkins.filter(c=>c.date===t).sort((a,b)=>b.ts-a.ts);
+  const card=document.getElementById('todayCard');
+  if(!list.length){card.style.display='none';return;}
+  card.style.display='';
+  box.innerHTML=list.map(c=>{const book=state.books.find(b=>b.id===c.bookId);
+    return '<div class="citem"><div class="cm">'+c.minutes+'<small style="font-size:11px;color:var(--ink-soft)">分</small></div>'+
+    '<div class="cx"><div class="cn">'+(esc(c.note)||'今天读了 '+c.minutes+' 分钟')+'</div><div class="ct">'+
+    (book?'📖 '+book.title+' · ':'')+(c.pageEnd?'读到第 '+c.pageEnd+' 页':'')+'</div></div></div>';}).join('');
+}
+
+let curTab='all';
+function renderBooks(){
+  const tabs=[['all','全部'],['want','想读'],['reading','正在读'],['finished','已读完']];
+  const tc=document.getElementById('bookTabs');tc.innerHTML='';
+  tabs.forEach(([k,label])=>{const n=k==='all'?state.books.length:state.books.filter(b=>b.status===k).length;
+    const b=document.createElement('button');b.className='tab'+(curTab===k?' on':'');b.textContent=label+' '+n;
+    b.onclick=()=>{curTab=k;renderBooks();};tc.appendChild(b);});
+  const list=state.books.filter(b=>curTab==='all'||b.status===curTab);
+  const box=document.getElementById('books');box.innerHTML='';
+  if(!list.length){box.innerHTML='<div class="empty">这里还没有书哦，点右下角 ＋ 添加一本吧 📖</div>';return;}
+  const palette=['#ffd166','#ff8fa3','#34c8a0','#5b9cf0','#b89bff','#ff9f6b'];
+  list.forEach(b=>{let h=0;for(const c of b.title)h=(h*31+c.charCodeAt(0))>>>0;
+    const color=palette[h%palette.length];
+    const stName={want:'想读',reading:'正在读',finished:'已读完'}[b.status];
+    const stCls={want:'st-want',reading:'st-reading',finished:'st-finished'}[b.status];
+    const pct=b.totalPages>0&&b.lastPage>0?Math.min(100,Math.round(b.lastPage/b.totalPages*100)):0;
+    const el=document.createElement('div');el.className='book';el.style.cursor='pointer';el.setAttribute('data-act','viewBook');el.setAttribute('data-id',b.id);
+    el.innerHTML='<div class="cover" style="background:linear-gradient(135deg,'+color+','+shade(color)+')">'+esc(b.title.charAt(0))+'</div>'+
+      '<div class="binfo"><div class="btitle">'+esc(b.title)+'</div><div class="bmeta"><span class="tag">'+(b.category||'其他')+'</span>'+
+      (b.author?'<span>'+esc(b.author)+'</span>':'')+'<span class="statusdot '+stCls+'">'+stName+'</span></div>'+
+      (b.totalPages?'<div class="nbar" style="margin-top:8px;height:6px"><i style="width:'+pct+'%"></i></div>'+
+      '<div style="font-size:11px;font-weight:700;color:var(--ink-soft);margin-top:4px">进度 '+pct+'% · '+b.lastPage+' / '+b.totalPages+' 页</div>':'')+
+      (b.note?'<div class="bnote">📝 '+esc(b.note)+'</div>':'')+'</div>'+
+      '<div class="bacts"><button class="mini" data-act="editBook" data-id="'+b.id+'">✏️</button><button class="mini del" data-act="delBook" data-id="'+b.id+'">🗑️</button></div>';
+    box.appendChild(el);});
+}
+function shade(hex){const m={'#ffd166':'#ffb703','#ff8fa3':'#ff6b8a','#34c8a0':'#16a987','#5b9cf0':'#3b7fe0','#b89bff':'#9b7bf0','#ff9f6b':'#ff7a45'};return m[hex]||'#888';}
+
+function renderMap(){
+  const s=snapshot();const ms=mapState(s);const ext=mapExt(s);const path=document.getElementById('mapPath');path.innerHTML='';
+  const litCnt=MAP.filter(m=>ms[m.id]).length;
+  const mc=document.getElementById('mapCount');
+  if(mc)mc.textContent='已点亮 '+litCnt+' / '+MAP.length+' 站';
+  MAP.forEach(m=>{const on=ms[m.id];
+    const cur=Math.max(0,Math.min(m.cur(ext),m.target));
+    const pct=Math.min(100,Math.round(cur/m.target*100));
+    const el=document.createElement('div');el.className='node'+(on?' on':'');
+    el.innerHTML='<div class="nicon">'+m.icon+'</div><div class="nbody"><div class="nname">'+m.name+'</div><div class="ndesc">'+m.desc+'</div>'+
+      '<div class="nbar"><i style="width:'+pct+'%"></i></div>'+
+      '<div class="nstat '+(on?'done':'lock')+'">'+(on?'✓ 已达成':'🔒 '+cur+' / '+m.target+' '+m.unit)+'</div></div>';
+    el.onclick=()=>openNode(m.id);el.style.cursor='pointer';path.appendChild(el);});
+}
+function openNode(id){
+  const m=MAP.find(x=>x.id===id);if(!m)return;
+  const s=snapshot();const ext=mapExt(s);const done=mapState(s)[m.id];
+  const cur=Math.max(0,Math.min(m.cur(ext),m.target));
+  const pct=Math.min(100,Math.round(cur/m.target*100));
+  document.getElementById('nodeDetail').innerHTML=
+    '<div style="text-align:center;font-size:54px;line-height:1.2">'+m.icon+'</div>'+
+    '<h3 style="text-align:center;margin:4px 0 2px">'+m.name+'</h3>'+
+    '<div class="desc" style="text-align:center">'+m.desc+'</div>'+
+    '<div class="bar" style="margin-top:16px"><i style="width:'+pct+'%"></i></div>'+
+    '<div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:var(--ink-soft);margin-top:8px">'+
+      '<span>已完成 '+cur+' '+m.unit+'</span><span>目标 '+m.target+' '+m.unit+'</span></div>'+
+    '<div style="text-align:center;margin-top:14px;font-weight:800;font-size:14px;color:'+(done?'var(--green)':'var(--ink-soft)')+'">'+
+      (done?'✓ 已达成，继续向前！':'🔒 还差 '+(m.target-cur)+' '+m.unit)+'</div>';
+  openModal('mNode');
+}
+
+function last7(){ // 自然周：周一 → 周日，符合日历习惯
+  const arr=[];let sum=0;
+  const now=new Date();const dow=now.getDay();const diff=(dow===0?-6:1-dow); // 以周一为起点
+  const mon=new Date(now);mon.setDate(now.getDate()+diff);
+  const today=dateStr(now);
+  for(let i=0;i<7;i++){const d=new Date(mon);d.setDate(mon.getDate()+i);const key=dateStr(d);
+    const m=state.checkins.filter(c=>c.date===key).reduce((a,c)=>a+c.minutes,0);sum+=m;
+    arr.push({key,m,label:['一','二','三','四','五','六','日'][i],isToday:key===today});}
+  return {arr,min:sum};}
+
+/* —— 趋势图周期切换：本周 / 本月 / 上月 —— */
+let trendMode='week';
+function prevYM(ym){const p=ym.split('-').map(Number);return p[1]===1?(p[0]-1)+'-12':p[0]+'-'+pad(p[1]-1);}
+function monthArr(ym){ // 'YYYY-MM' → 该月每天的阅读分钟数组
+  const p=ym.split('-').map(Number);
+  const days=new Date(p[0],p[1],0).getDate();
+  const today=todayStr();const arr=[];let sum=0;
+  for(let i=1;i<=days;i++){const key=ym+'-'+pad(i);
+    const mi=state.checkins.filter(c=>c.date===key).reduce((a,c)=>a+c.minutes,0);sum+=mi;
+    arr.push({key,m:mi,label:String(i),isToday:key===today});}
+  return {arr,sum};
+}
+function renderTrend(){
+  const chart=document.getElementById('chart');if(!chart)return;
+  const title=document.getElementById('trendTitle');
+  ['segWeek','segMonth','segLast'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.remove('on');});
+  let arr;
+  if(trendMode==='week'){
+    const w=last7();arr=w.arr;
+    if(title)title.textContent='📈 本周阅读趋势 · 共 '+w.min+' 分钟';
+    const el=document.getElementById('segWeek');if(el)el.classList.add('on');
+    chart.classList.remove('mon');
+  }else{
+    const ym=todayStr().slice(0,7);const target=trendMode==='month'?ym:prevYM(ym);
+    const mo=monthArr(target);arr=mo.arr;
+    if(title)title.textContent='📈 '+(trendMode==='month'?'本月':'上月')+'阅读趋势 · 共 '+mo.sum+' 分钟';
+    const el=document.getElementById(trendMode==='month'?'segMonth':'segLast');if(el)el.classList.add('on');
+    chart.classList.add('mon');
+  }
+  const maxV=Math.max(10,...arr.map(x=>x.m));chart.innerHTML='';
+  arr.forEach(x=>{const col=document.createElement('div');col.className='col'+(x.isToday?' today':'');
+    const h=Math.max(4,Math.round(x.m/maxV*100));
+    col.innerHTML='<div class="v">'+(x.m||'')+'</div><div class="bar" style="height:0%"></div><div class="d">'+x.label+'</div>';
+    chart.appendChild(col);requestAnimationFrame(()=>{col.querySelector('.bar').style.height=h+'%';});});
+}
+
+/* —— 阅读日历：按天展示读了什么 —— */
+let calYM=todayStr().slice(0,7); // 默认当月，可左右翻
+function renderCalendar(){
+  const grid=document.getElementById('calGrid');if(!grid)return;
+  const p=calYM.split('-').map(Number);
+  const title=document.getElementById('calTitle');if(title)title.textContent=p[0]+'年'+p[1]+'月';
+  const days=new Date(p[0],p[1],0).getDate();
+  const fd=new Date(p[0],p[1]-1,1).getDay();const off=fd===0?6:fd-1; // 周一为第一列
+  const today=todayStr();
+  let html='';['一','二','三','四','五','六','日'].forEach(w=>html+='<div class="cw">'+w+'</div>');
+  for(let i=0;i<off;i++)html+='<div class="cday empty"></div>';
+  for(let i=1;i<=days;i++){const key=calYM+'-'+pad(i);
+    const mi=state.checkins.filter(c=>c.date===key).reduce((a,c)=>a+c.minutes,0);
+    const hol=holidayOf(key);
+    html+='<div class="cday'+(mi>0?' has':'')+(key===today?' today':'')+'" data-act="dayOpen" data-date="'+key+'" title="'+mi+' 分钟">'+
+      (hol?'<span class="chd'+(hol.rest?'':' chw')+'" title="'+hol.name+'">'+(hol.rest?'休':'上学')+'</span>':'')+
+      '<div>'+i+'</div>'+(mi>0?'<div class="cm">'+mi+'分</div>':'')+'</div>';}
+  grid.innerHTML=html;
+}
+function calShift(d){
+  const cur=todayStr().slice(0,7);
+  if(d>0&&calYM>=cur){toast('已经是最新的一个月啦～');return;}
+  if(d<0&&calYM<='2026-01')return; // 别翻到 app 诞生前
+  const p=calYM.split('-').map(Number);const nd=new Date(p[0],p[1]-1+d,1);
+  calYM=nd.getFullYear()+'-'+pad(nd.getMonth()+1);renderCalendar();
+}
+function openDayDetail(key){ // 点日历某一天 → 弹出这天的打卡明细
+  const list=state.checkins.filter(c=>c.date===key).sort((a,b)=>a.ts-b.ts);
+  const total=list.reduce((a,c)=>a+c.minutes,0);
+  const p=key.split('-').map(Number);
+  const hol=holidayOf(key);
+  document.getElementById('dayTitle').textContent=p[1]+'月'+p[2]+'日'+(hol?' · '+hol.name+(hol.rest?'':'（调休，要上学哦）'):'');
+  document.getElementById('daySub').textContent=total>0?(hol&&hol.rest?''+hol.name+'读了 '+total+' 分钟，真棒！':'这一天共读了 '+total+' 分钟，真棒！'):(hol&&hol.rest?''+hol.name+'，痛痛快快玩一天，也别忘了读一会儿书哦':'这一天还没有阅读记录');
+  const box=document.getElementById('dayList');
+  if(!list.length)box.innerHTML='<div class="empty" style="padding:24px 10px">这一天还是空白的，去打卡点亮它吧 🌟</div>';
+  else box.innerHTML='<div class="clist">'+list.map(c=>{
+    const dt=new Date(c.ts);const book=state.books.find(b=>b.id===c.bookId);
+    return '<div class="citem"><div class="cm">'+c.minutes+'<small style="font-size:11px;color:var(--ink-soft)">分</small></div>'+
+      '<div class="cx"><div class="cn">'+(esc(c.note)||'读了 '+c.minutes+' 分钟')+'</div><div class="ct">'+pad(dt.getHours())+':'+pad(dt.getMinutes())+' · '+(book?'📖 '+book.title:'未关联书籍')+
+      (c.pageEnd?' · 读到第 '+c.pageEnd+' 页':'')+'</div></div></div>';
+  }).join('')+'</div>';
+  openModal('mDay');
+}
+
+/* —— 法定节假日：数据源 holiday-cn（自动同步国务院公告，经 jsdelivr CDN，国内可达）——
+   缓存策略：某年数据拉取成功后永久存本机，之后不再请求；
+   每年 11 月起尝试拉取下一年——已发布就直接缓存，未发布或失败则每天最多重试一次 */
+function holidayCache(){try{return JSON.parse(localStorage.getItem('rgm_holiday_cn')||'{}');}catch(e){return {};}}
+function saveHolidayCache(c){try{localStorage.setItem('rgm_holiday_cn',JSON.stringify(c));}catch(e){}}
+async function ensureHoliday(year){
+  const c=holidayCache();
+  if(c[year])return c[year];                   // 已缓存：不再调用
+  if(c['att_'+year]===todayStr())return null;  // 今天已试过（未发布/失败）：明天再试
+  c['att_'+year]=todayStr();saveHolidayCache(c);
+  try{
+    const opt=(typeof AbortSignal!=='undefined'&&AbortSignal.timeout)?{signal:AbortSignal.timeout(8000)}:{};
+    const r=await fetch('https://cdn.jsdelivr.net/gh/NateScarlet/holiday-cn@master/'+year+'.json',opt);
+    if(!r.ok)return null;
+    const j=await r.json();
+    if(!j||!Array.isArray(j.days)||!j.days.length)return null; // 官方还没发布该年安排
+    const map={};
+    j.days.forEach(x=>{if(x&&x.date&&/^\d{4}-\d{2}-\d{2}$/.test(x.date))map[x.date]={name:x.name||'',rest:!!x.isOffDay};});
+    if(!Object.keys(map).length)return null;
+    c[year]=map;delete c['att_'+year];saveHolidayCache(c);
+    return map;
+  }catch(e){console.warn('节假日拉取失败('+year+'):',e&&e.message||e);return null;}
+}
+async function refreshHolidays(){
+  const y=Number(todayStr().slice(0,4));
+  const a=await ensureHoliday(y);
+  let b=null;
+  if(Number(todayStr().slice(5,7))>=11)b=await ensureHoliday(y+1); // 每年11月起抓下一年
+  return a||b;
+}
+function holidayOf(key){const c=holidayCache();return (c[key.slice(0,4)]||{})[key]||null;}
+function ageText(bd){ // bd: 'YYYY-MM-DD' → "6岁3个月"，按当天动态计算
+  if(!bd)return '';const p=bd.split('-').map(Number);
+  if(p.length<2||!p[0]||isNaN(p[0]))return '';
+  const n=new Date();const day=p[2]||1;
+  let y=n.getFullYear()-p[0],m=n.getMonth()+1-(p[1]||1);
+  if(n.getDate()<day)m--;              // 还没到生日那一天，月份先减 1
+  if(m<0){y--;m+=12;}
+  if(y<0)return '';
+  return y+'岁'+(m>0?m+'个月':'整');}
+function renderReport(){
+  const s=snapshot();const w=last7();const ym=todayStr().slice(0,7);
+  const thisMonth=state.checkins.filter(c=>c.date.slice(0,7)===ym).reduce((a,c)=>a+c.minutes,0);
+  const monthFinished=finishedBooks().filter(b=>b.finishedAt&&b.finishedAt.slice(0,7)===ym).length;
+  const stats=[{num:w.min,lab:'本周阅读(分钟)'},{num:thisMonth,lab:'本月阅读(分钟)'},{num:s.total,lab:'累计阅读(分钟)'},
+    {num:monthFinished,lab:'本月读完(本)'},{num:s.maxStreak,lab:'最长连续(天)'}];
+  const box=document.getElementById('reportStats');box.innerHTML='';
+  stats.forEach(st=>{const el=document.createElement('div');el.className='rstat';el.innerHTML='<div class="num">'+st.num+'</div><div class="lab">'+st.lab+'</div>';box.appendChild(el);});
+  renderTrend(); // 趋势图（本周/本月/上月 三档切换）
+  const recent=state.checkins.slice().sort((a,b)=>b.ts-a.ts).slice(0,12);
+  const rl=document.getElementById('recentList');
+  if(!recent.length){rl.innerHTML='<div class="empty">还没有打卡记录哦～</div>';}
+  else rl.innerHTML='<div class="clist">'+recent.map(c=>{
+    const dt=new Date(c.ts);const tl=dateStr(dt).slice(5)+' '+pad(dt.getHours())+':'+pad(dt.getMinutes());
+    const book=state.books.find(b=>b.id===c.bookId);
+    return '<div class="citem"><div class="cm">'+c.minutes+'<small style="font-size:11px;color:var(--ink-soft)">分</small></div>'+
+      '<div class="cx"><div class="cn">'+(esc(c.note)||'读了 '+c.minutes+' 分钟')+'</div><div class="ct">'+tl+' · '+(book?'📖 '+book.title:'未关联书籍')+
+      (c.pageEnd?' · 读到第 '+c.pageEnd+' 页':'')+'</div></div></div>';
+  }).join('')+'</div>';
+  const dc=dailyCheer(); // 报告底部：每日随机鼓励语（当天固定，跨天更换）
+  const rce=document.getElementById('reportCheerEm');if(rce)rce.textContent=dc.em;
+  document.getElementById('reportCheer').textContent=dc.tx;
+  renderCalendar(); // 阅读日历
+  renderSyncBox();
+}
+function renderSyncBox(){
+  const box=document.getElementById('syncBox');
+  if(!SB){box.innerHTML='<div class="row"><span style="font-weight:800">📱 仅本机</span><span class="syncdot">未配置云</span></div>'+
+    '<div style="font-size:12px;color:var(--ink-soft);font-weight:600;margin-top:8px">在文件顶部 CONFIG 填入 Supabase 后即可多手机实时共享。</div>';return;}
+  const code=state.settings.familyCode;
+  if(!code){box.innerHTML='<div class="row"><span style="font-weight:800">☁️ 云同步未开启</span><span class="syncdot">未加入</span></div>'+
+    '<div class="minirow"><button class="btn primary" data-act="openFamily">开启家庭共享</button></div>';return;}
+  box.innerHTML='<div class="row"><div><div style="font-size:12px;font-weight:700;color:var(--ink-soft)">家庭共享码</div><div class="code">'+code+'</div></div>'+
+    '<span class="syncdot '+(syncState)+'" id="syncDot">'+(syncLabel)+'</span></div>'+
+    '<div class="minirow"><button class="btn ghost" data-act="copyCode">📋 复制共享码</button>'+
+    '<button class="btn ghost" data-act="exitFamily">退出共享</button></div>';
+}
+
+function badgeTile(b,on){const el=document.createElement('div');el.className='badge'+(on?' on':'');
+  el.innerHTML='<div class="ic">'+b.icon+'</div><div class="nm">'+b.name+'</div>'+(on?'':'<div class="lock">🔒</div>');el.title=b.desc;return el;}
+function renderBadges(){
+  const s=snapshot();const bs=badgeState(s);let on=0;for(const k in bs)if(bs[k])on++;
+  const head=document.getElementById('badgeHead');if(head)head.textContent='已解锁 '+on+' / '+BADGES.length+' 枚';
+  const box=document.getElementById('badgesPage');if(!box)return;box.innerHTML='';
+  BADGES.forEach(b=>{const el=badgeTile(b,bs[b.id]);el.style.cursor='pointer';
+    el.onclick=()=>toast(b.icon+' '+b.name+'：'+b.desc);box.appendChild(el);});
+  const cheer=document.getElementById('badgeCheer');
+  if(cheer)cheer.textContent=on>=BADGES.length?'🎉 全部徽章都解锁啦，太厉害了！':on>0?'继续加油，还有 '+(BADGES.length-on)+' 枚徽章等着你！':'每解锁一枚徽章，都是一次小小的成长。';
+}
+function renderAll(){renderHome();renderBooks();renderMap();renderReport();renderBadges();}
+
+/* ===================== 云端同步 ===================== */
+let lastSeenUpdatedAt=null, pushTimer=null, syncState='syn', syncLabel='同步中…', explicitClearPhoto=false, syncPolling=false;
+function setSync(st,label){syncState=st;if(label)syncLabel=label;const d=document.getElementById('syncDot');if(d){d.className='syncdot '+st;d.textContent=label;}}
+function schedulePush(){if(!SB||!state.settings.familyCode)return;clearTimeout(pushTimer);pushTimer=setTimeout(doPush,800);}
+async function doPush(force){if(!SB||!state.settings.familyCode)return;
+  setSync('syn','同步中…');
+  const ts=new Date().toISOString();
+  // 读-改-写：先把云端已有数据合并进本机，保证多端写入时云端始终保留「并集」，不会互相覆盖
+  let remote=null,remotePhoto=null,readFail=false;
+  if(!force){
+    try{const {data,error}=await SB.from('reading_state').select('*').eq('family_id',state.settings.familyCode).maybeSingle();
+      if(error)readFail=true;
+      else if(data&&data.data){remote=data.data;if(data.data.child)remotePhoto=data.data.child.photo;}}catch(e){readFail=true;}
+    // 关键防护①：推送前读取云端失败 → 本次绝不推送（旧代码把失败当「云端没数据」，导致空数据覆盖云端）
+    if(readFail){setSync('err','同步失败');console.warn('推送前读取云端失败，本次跳过推送，稍后自动重试');return;}
+    if(remote){mergeRemote(remote);await persist();renderAll();}
+    // 关键防护②：本机什么都没有而云端有数据（典型：新设备刚输入共享码）→ 只拉不推，绝不用空数据覆盖全家数据
+    const localEmpty=!(state.books.length||state.checkins.length||(state.child&&state.child.setup));
+    if(remote&&localEmpty){setSync('ok','☁️ 已拉取云端数据');return;}
+  }
+  // 保护共享头像：本机没有照片且非用户主动清除时，沿用云端已有照片，避免把家庭共享头像清掉
+  let childToPush=state.child;
+  if(!force&&!state.child.photo&&!explicitClearPhoto&&remotePhoto)childToPush={...state.child,photo:remotePhoto};
+  explicitClearPhoto=false;
+  const row={family_id:state.settings.familyCode,
+    data:{child:childToPush,books:state.books,deleted:state.deleted||{books:{},checkins:{}},
+      checkins:state.checkins.map(c=>({...c,audio:null}))}, // 录音只存本机，不上传云端
+    updated_at:ts};
+  // 弱网/地铁/切网时单次请求容易失败：自动重试最多 3 次（间隔 2s/4s），失败才提示
+  let error=null;
+  for(let i=0;i<3;i++){
+    try{const r=await SB.from('reading_state').upsert(row,{onConflict:'family_id'});error=r.error;}
+    catch(e){error=e;console.warn('云同步第'+(i+1)+'次网络异常:',e&&e.message||e);warnBlockedOnce();}
+    if(!error)break;
+    if(i<2)await new Promise(res=>setTimeout(res,(i+1)*2000));
+  }
+  if(error){setSync('err','同步失败');console.warn(error);}
+  else{lastSeenUpdatedAt=ts;setSync('ok','已同步 ☁️');} // 记录自己刚写的时间串，抑制回显渲染
+}
+let syncBlockedWarned=false;
+function warnBlockedOnce(){ // 本地预览服务可能带 CSP connect-src 白名单（不含 supabase），浏览器会拦截全部同步请求
+  if(syncBlockedWarned)return;syncBlockedWarned=true;
+  if(location.hostname==='127.0.0.1'||location.hostname==='localhost'){
+    console.warn('当前是本地预览环境，CSP 限制了到 Supabase 的联网请求。请直接双击打开 HTML 文件（file://）或使用正式部署链接，同步即可正常。');
+    toast('⚠️ 预览环境拦截了联网，请直接打开 HTML 文件或用正式链接');}}
+async function doPull(){if(!SB||!state.settings.familyCode)return false;
+  let data=null;
+  try{const r=await SB.from('reading_state').select('*').eq('family_id',state.settings.familyCode).maybeSingle();
+    if(r.error){setSync('err','同步失败');console.warn('拉取云端失败:',r.error.message||r.error);return false;}
+    data=r.data;
+  }catch(e){ // 网络级异常（断网/超时/被 CSP 拦截）：请求根本没成功，也如实报失败
+    setSync('err','同步失败');console.warn('拉取云端网络异常:',e&&e.message||e);warnBlockedOnce();return false;}
+  if(!data)return true; // 云端还没有该共享码的行（全新家庭），正常
+  // 关键防护③自愈：云端是空的而本机有数据（说明曾被某台设备用空数据覆盖过）→ 立即推送恢复云端
+  const rd=data.data||{};
+  const remoteEmpty=!(rd.books&&rd.books.length)&&!(rd.checkins&&rd.checkins.length)&&!(rd.child&&rd.child.setup);
+  const localHas=state.books.length||state.checkins.length||(state.child&&state.child.setup);
+  if(remoteEmpty&&localHas){schedulePush();return true;}
+  // 关键修复：不再比较「时间先后」——各手机时钟不一致时，时钟快的设备写的时间戳会永久压住
+  // 其他设备后续写入，导致对方数据被当成"旧的"跳过。改为：updated_at 字符串变了就合并
+  // （mergeRemote 是按 id+updatedAt 的并集合并，重复执行幂等安全）。
+  if(!data.updated_at||data.updated_at===lastSeenUpdatedAt)return true;
+  lastSeenUpdatedAt=data.updated_at;
+  if(mergeRemote(rd)){await persist();renderAll();toast('☁️ 已同步家人更新');}
+  return true;
+}
+function mergeRemote(rd){
+  const before=JSON.stringify([state.books,state.checkins,state.child,state.deleted]);
+  // 合并删除墓碑：取并集，时间戳取较大者（保证一端删除能传播到另一端）
+  state.deleted=state.deleted||{books:{},checkins:{}};
+  if(rd.deleted){for(const k of ['books','checkins']){const rm=rd.deleted[k]||{};const lm=state.deleted[k]||{};
+    for(const id in rm){if(!(id in lm)||rm[id]>(lm[id]||0))lm[id]=rm[id];}state.deleted[k]=lm;}}
+  // 书籍：按 id 合并（新增/修改以 updatedAt 较新者胜出）；被墓碑标记的一律移除
+  const bm=new Map(state.books.map(b=>[b.id,b]));
+  (rd.books||[]).forEach(b=>{if(state.deleted.books[b.id])return;const ex=bm.get(b.id);
+    if(!ex||(b.updatedAt||0)>(ex.updatedAt||0))bm.set(b.id,b);});
+  state.books=[...bm.values()].filter(b=>!state.deleted.books[b.id]);
+  // 打卡：同理
+  const cm=new Map(state.checkins.map(c=>[c.id,c]));
+  (rd.checkins||[]).forEach(c=>{if(state.deleted.checkins[c.id])return;const ex=cm.get(c.id);
+    if(!ex||(c.updatedAt||0)>(ex.updatedAt||0))cm.set(c.id,c);});
+  state.checkins=[...cm.values()].filter(c=>!state.deleted.checkins[c.id]);
+  // 小读者资料：以 updatedAt 较新者为准；远程无照片时不抹掉本机真实头像
+  if(rd.child){
+    const rUpd=rd.child.updatedAt||0,lUpd=state.child.updatedAt||0;
+    if(rUpd>lUpd){const m={...rd.child};
+      if(!m.photo&&state.child&&state.child.photo)m.photo=state.child.photo;
+      state.child=m;}
+  }
+  return JSON.stringify([state.books,state.checkins,state.child,state.deleted])!==before;
+}
+let syncBound=false;
+function bindSync(){if(!SB||!state.settings.familyCode||syncBound)return;syncBound=true;
+  SB.channel('rst:'+state.settings.familyCode)
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'reading_state',filter:'family_id=eq.'+state.settings.familyCode},()=>doPull())
+    .subscribe();
+}
+async function startSync(){if(!SB)return;bindSync();
+  // 定时轮询作为实时订阅的兜底：即便 Supabase Realtime 未开启该表，也能定期拉取家人更新
+  if(!syncPolling){syncPolling=true;
+    setInterval(()=>{if(state.settings.familyCode)doPull();},15000);
+    // 切回前台立刻拉一次：不用等 15 秒轮询，B 手机打开 app 就能看到家人最新数据
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden&&state.settings.familyCode)doPull();});}
+  const ok=await doPull();
+  setSync(ok===false?'err':'ok',ok===false?'同步失败，稍后自动重试':'已同步 ☁️');}
+
+/* ===================== 交互 ===================== */
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2200);}
+function openModal(id){document.getElementById(id).classList.add('show');}
+let confirmCb=null;
+function showConfirm(title,msg,cb){confirmCb=cb;document.getElementById('confirmTitle').textContent=title;document.getElementById('confirmMsg').textContent=msg;openModal('mConfirm');}
+function setBookStatusSeg(v){const hid=document.getElementById('bkStatus');if(hid)hid.value=v;const seg=document.getElementById('bkStatusSeg');if(seg)seg.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.getAttribute('data-value')===v));}
+function currentReadingBook(){return state.books.find(b=>b.status==='reading')||null;}
+function currentCheckinBook(){const sel=document.getElementById('checkinBook');if(!sel||!sel.value)return null;return state.books.find(b=>b.id===sel.value)||null;}
+function gotoPage(page){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  const el=document.getElementById('page-'+page);if(el)el.classList.add('active');
+  document.querySelectorAll('.navitem').forEach(n=>n.classList.remove('on'));
+  const nav=document.querySelector('.navitem[data-page="'+page+'"]');if(nav)nav.classList.add('on');
+}
+function closeModal(){document.querySelectorAll('.modal').forEach(m=>m.classList.remove('show'));}
+
+let selDur=null;
+function openCheckin(preset,customMinutes,bookId){
+  selDur=preset||null;
+  // 若有「正在读」的书，本次打卡只能选它；否则列出全部书供挑选
+  const box=document.getElementById('bookSelBox');
+  const reading=state.books.find(b=>b.status==='reading');
+  if(!state.books.length){if(box)box.innerHTML='<div class="booksel"><label>📖 本次读的是哪本书</label><div class="empty">还没有书哦，先去书架加一本吧 📚</div></div>';}
+  else{if(box){const label=reading?'📖 正在读的书（本次只能为它打卡）':'📖 本次读的是哪本书';
+      box.innerHTML='<label>'+label+'</label><select id="checkinBook"></select>';const s=document.getElementById('checkinBook');
+      if(reading){const o=document.createElement('option');o.value=reading.id;o.textContent=reading.title+' · 正在读';s.appendChild(o);}
+      else{const order={reading:0,want:1,finished:2};
+        state.books.slice().sort((a,b)=>{
+          const d=(order[a.status]??3)-(order[b.status]??3);
+          if(d)return d;
+          if(a.status==='finished'){ // 已读完的：按读完日期降序，最近读完的在前，最早读的排最后
+            const fa=a.finishedAt||'',fb=b.finishedAt||'';
+            if(fa!==fb)return fa<fb?1:-1;
+            return (b.updatedAt||0)-(a.updatedAt||0);}
+          return 0;}).forEach(b=>{const o=document.createElement('option');o.value=b.id;
+        const tag={reading:' · 正在读',want:' · 想读',finished:' · 已读完'}[b.status]||'';o.textContent=b.title+tag;s.appendChild(o);});}
+      const sel=document.getElementById('checkinBook');
+      if(reading){sel.value=reading.id;} // 正在读的书自动锁定
+      else{ // 没有「正在读」时不预选任何书，必须手动选择，避免习惯性默认到第一本
+        const ph=document.createElement('option');ph.value='';ph.textContent='请选择一本书';
+        sel.insertBefore(ph,sel.firstChild);sel.value=bookId||'';}}}
+  const book=currentCheckinBook()||state.books[0];
+  const desc=document.getElementById('checkinDesc');if(desc)desc.textContent=book?'正在为《'+book.title+'》记录阅读，今天读了多久呀？':'今天读了多久呀？选一个时间吧～';
+  const fchk=document.getElementById('finishBookChk');if(fchk)fchk.checked=false;
+  const pageRow=document.getElementById('pageRow');if(pageRow)pageRow.style.display='';
+  const pe=document.getElementById('pageEnd');const pr=document.getElementById('pagesRead');
+  if(pe){pe.value='';pe.max=book&&book.totalPages?book.totalPages:'';pe.placeholder='读到第 '+(book&&book.lastPage?book.lastPage+1:1)+' 页';}
+  if(pr)pr.value='';
+  // 自动根据「读到第几页」计算「本次读了多少页」，并限制不超过总页数
+  if(pe)pe.oninput=()=>{const b=currentCheckinBook();const lp=b&&b.lastPage?b.lastPage:0;const mx=b&&b.totalPages?b.totalPages:1e9;let v=parseInt(pe.value,10);if(v>mx){v=mx;pe.value=mx;}if(v>lp)document.getElementById('pagesRead').value=v-lp;else document.getElementById('pagesRead').value='';};
+  // 勾选「读完」时隐藏页码输入
+  if(fchk)fchk.onchange=()=>{if(pageRow)pageRow.style.display=fchk.checked?'none':'';};
+  const grid=document.getElementById('duraGrid');grid.innerHTML='';
+  DURAS.forEach(d=>{const b=document.createElement('button');b.type='button';b.className='dbtn'+(selDur===d?' on':'');
+    b.innerHTML=d+'<span class="u">分钟</span>';
+    b.onclick=()=>{selDur=d;document.getElementById('customMin').value='';grid.querySelectorAll('.dbtn').forEach(x=>x.classList.remove('on'));b.classList.add('on');};
+    grid.appendChild(b);});
+  document.getElementById('customMin').value=customMinutes||'';
+  document.getElementById('noteInput').value='';
+  if(customMinutes){grid.querySelectorAll('.dbtn').forEach(x=>x.classList.remove('on'));}
+  openModal('mCheckin');
+}
+
+/* ---- 计时器：开始阅读（真实计时） vs 完成今日阅读（直接记录） ---- */
+let timerStart=null,timerInterval=null,timerBookId=null;
+function startTimer(){
+  if(!state.books.length){toast('还没有书哦，先去书架加一本吧 📚');gotoPage('books');return;}
+  timerBookId=null;timerStart=Date.now();
+  document.getElementById('goalBtns').style.display='none';
+  document.getElementById('timerBox').style.display='block';
+  clearInterval(timerInterval);timerInterval=setInterval(tickTimer,1000);tickTimer();
+  toast('⏱ 开始计时啦，专心读书吧！');
+}
+function tickTimer(){const el=document.getElementById('tNum');if(!el||!timerStart)return;
+  const s=Math.floor((Date.now()-timerStart)/1000);const mins=Math.floor(s/60);
+  el.textContent=pad(mins)+':'+pad(s%60);
+  const sub=document.getElementById('tSub');if(sub)sub.textContent='已读 '+mins+' 分钟';}
+function resetTimerUI(){const b=document.getElementById('goalBtns'),t=document.getElementById('timerBox');
+  if(b)b.style.display='';if(t)t.style.display='none';}
+function stopTimer(){if(!timerStart)return;
+  clearInterval(timerInterval);timerInterval=null;
+  const mins=Math.max(1,Math.round((Date.now()-timerStart)/60000));
+  timerStart=null;resetTimerUI();
+  openCheckin(0,mins,timerBookId);toast('读了 '+mins+' 分钟，记录一下吧～');}
+function cancelTimer(){clearInterval(timerInterval);timerInterval=null;timerStart=null;timerBookId=null;resetTimerUI();toast('已取消本次计时');}
+function stepMin(delta){const el=document.getElementById('customMin');if(!el)return;
+  const v=parseInt(el.value,10)||0;const nv=Math.min(600,Math.max(1,v+delta));
+  el.value=nv;selDur=null;
+  document.querySelectorAll('#duraGrid .dbtn').forEach(x=>x.classList.remove('on'));}
+function submitCheckin(){
+  let min=selDur;const custom=parseInt(document.getElementById('customMin').value,10);
+  if(custom>0)min=custom;
+  if(!min||min<=0){toast('请选择或输入阅读分钟数哦');return;}
+  if(min>600)min=600;
+  const bookId=(document.getElementById('checkinBook')||{}).value;
+  if(!bookId){toast('请先选择一本书哦');return;}
+  const note=document.getElementById('noteInput').value.trim();
+  const finished=document.getElementById('finishBookChk')&&document.getElementById('finishBookChk').checked;
+  let pageEnd=parseInt(document.getElementById('pageEnd').value,10);
+  let pages=parseInt(document.getElementById('pagesRead').value,10);
+  const book=state.books.find(b=>b.id===bookId);
+  // 页数不超过最大页数
+  if(book&&book.totalPages){
+    if(pageEnd>book.totalPages)pageEnd=book.totalPages;
+    if(pages>(book.totalPages-(book.lastPage||0)))pages=Math.max(0,book.totalPages-(book.lastPage||0));
+  }
+  const before=snapshot();const beforeBadge=badgeState(before);const beforeMap=mapState(before);
+  // 勾选「全书读完」：自动填到最后一页
+  if(finished&&book&&book.totalPages){pageEnd=book.totalPages;pages=Math.max(0,book.totalPages-(book.lastPage||0));}
+  state.checkins.push({id:uid(),date:todayStr(),minutes:min,points:checkinPoints(min),note,ts:Date.now(),bookId,
+    pages:pages>0?pages:null,pageEnd:pageEnd>0?pageEnd:null,updatedAt:Date.now()});
+  if(book){
+    if(finished){book.status='finished';book.finishedAt=todayStr();if(book.totalPages)book.lastPage=book.totalPages;}
+    else{
+      if(pageEnd>0)book.lastPage=Math.max(book.lastPage||0,pageEnd);
+      if(book.totalPages&&pageEnd>=book.totalPages){book.status='finished';book.finishedAt=todayStr();} // 读到最后一页自动标记完成
+      else if(book.status==='want'){book.status='reading';state.books.forEach(o=>{if(o!==book&&o.status==='reading')o.status='want';});} // 想读→正在读，且只保留一本正在读
+    }
+  }
+  save();renderAll();closeModal();
+  celebrateIf(before,beforeBadge,beforeMap);
+}
+function celebrateIf(before,beforeBadge,beforeMap){
+  const after=snapshot();
+  const newBadge=BADGES.filter(b=>badgeState(after)[b.id]&&!beforeBadge[b.id]);
+  const newMap=MAP.filter(m=>mapState(after)[m.id]&&!beforeMap[m.id]);
+  const levelUp=after.lv.lv>before.lv.lv;
+  if(levelUp||newBadge.length||newMap.length){celebrate();
+    let msg=levelUp?'🎉 升级啦！成为 '+after.lv.name:newBadge.length?'🏅 解锁新徽章：'+newBadge.map(b=>b.icon+b.name).join(' '):'🗺️ 成长地图前进：'+newMap.map(m=>m.icon+m.name).join(' ');
+    toast(msg);}else{const dm=selDur||parseInt(document.getElementById('customMin').value,10)||0;toast('✅ 打卡成功，+'+checkinPoints(dm)+' 分！');}
+}
+function finishToday(){if(todayMinutes()>=GOAL){toast('🎉 今日目标已完成，明天继续哦！');return;}
+  if(!state.books.length){toast('还没有书哦，先去书架加一本吧 📚');gotoPage('books');return;}
+  openCheckin(GOAL,null,null);}
+
+let editId=null;
+function openBook(id){closeModal();editId=id||null;const b=id?state.books.find(x=>x.id===id):null;
+  document.getElementById('bookTitle').textContent=id?'📖 编辑书籍':'📖 添加书籍';
+  document.getElementById('bookDesc').textContent=id?'修改这本书的信息或阅读进度吧':'把想读的书加进来，读完就点亮它！';
+  document.getElementById('bkTitle').value=b?b.title:'';document.getElementById('bkAuthor').value=b?b.author:'';
+  document.getElementById('bkCat').value=b?b.category:'绘本';document.getElementById('bkTotalPages').value=b?(b.totalPages||''):'10';
+  setBookStatusSeg(b?b.status:'want');
+  document.getElementById('bkNote').value=b?(b.note||''):'';
+  document.getElementById('bkDelete').style.display=id?'block':'none';openModal('mBook');}
+function saveBook(){
+  const title=document.getElementById('bkTitle').value.trim();if(!title){toast('请填写书名哦');return;}
+  const author=document.getElementById('bkAuthor').value.trim();const category=document.getElementById('bkCat').value;const status=document.getElementById('bkStatus').value;
+  const totalPages=parseInt(document.getElementById('bkTotalPages').value,10);
+  if(!totalPages||totalPages<1){toast('请填写总页数（必填）');return;}
+  const note=(document.getElementById('bkNote').value||'').trim();
+  // 正在读的书籍只能有一本
+  if(status==='reading'){const other=state.books.find(b=>b.status==='reading'&&b.id!==editId);if(other){toast('请先完成《'+other.title+'》再开始新书');return;}}
+  const before=snapshot();const beforeBadge=badgeState(before);const beforeMap=mapState(before);
+  if(editId){const b=state.books.find(x=>x.id===editId);const was=b.status==='finished';
+    b.title=title;b.author=author;b.category=category;b.status=status;b.note=note;b.totalPages=totalPages;b.updatedAt=Date.now();
+    if(b.totalPages&&b.lastPage&&b.lastPage>b.totalPages)b.lastPage=b.totalPages;
+    if(status==='finished'&&!was)b.finishedAt=todayStr();if(status!=='finished')b.finishedAt=null;}
+  else state.books.push({id:uid(),title,author,category,status,note,totalPages:totalPages,lastPage:0,finishedAt:status==='finished'?todayStr():null,updatedAt:Date.now()});
+  save();renderAll();closeModal();
+  const after=snapshot();
+  const nb=BADGES.filter(x=>badgeState(after)[x.id]&&!beforeBadge[x.id]);const nm=MAP.filter(x=>mapState(after)[x.id]&&!beforeMap[x.id]);const lu=after.lv.lv>before.lv.lv;
+  if(lu||nb.length||nm.length){celebrate();toast(lu?'🎉 升级啦！成为 '+after.lv.name:nb.length?'🏅 解锁新徽章：'+nb.map(b=>b.icon+b.name).join(' '):'🗺️ 成长地图前进：'+nm.map(m=>m.icon+m.name).join(' '));}
+  else toast(editId?'💾 已保存':'📚 已添加到书架');
+}
+function delBook(id){
+  state.deleted=state.deleted||{books:{},checkins:{}};
+  const t=Date.now();
+  state.deleted.books[id]=t;                       // 记墓碑：删除随同步传播，其他设备拉取时真正移除
+  state.books=state.books.filter(b=>b.id!==id);
+  // 该书关联的打卡记录一并墓碑 + 移除（避免删除书籍后还残留阅读记录）
+  state.checkins.forEach(c=>{if(c.bookId===id)state.deleted.checkins[c.id]=t;});
+  state.checkins=state.checkins.filter(c=>c.bookId!==id);
+  save();renderAll();toast('🗑️ 已删除');
+}
+
+function delCheckin(id){
+  state.deleted=state.deleted||{books:{},checkins:{}};
+  state.deleted.checkins[id]=Date.now();           // 墓碑：删除随同步传播，其他设备拉取时真正移除
+  const c=state.checkins.find(x=>x.id===id);
+  state.checkins=state.checkins.filter(x=>x.id!==id);
+  save();renderAll();toast('🗑️ 已删除该条阅读记录');
+}
+
+function finishBook(id){const b=state.books.find(x=>x.id===id);if(!b)return;
+  b.status='finished';b.finishedAt=todayStr();if(b.totalPages)b.lastPage=b.totalPages;b.updatedAt=Date.now();
+  save();renderAll();openBookDetail(id);toast('🎉 《'+b.title+'》读完啦！');}
+function openBookDetail(id){const b=state.books.find(x=>x.id===id);if(!b)return;renderBookDetail(b);openModal('mBookDetail');}
+function renderBookDetail(b){
+  const palette=['#ffd166','#ff8fa3','#34c8a0','#5b9cf0','#b89bff','#ff9f6b'];
+  let h=0;for(const c of b.title)h=(h*31+c.charCodeAt(0))>>>0;const color=palette[h%palette.length];
+  const stName={want:'想读',reading:'正在读',finished:'已读完'}[b.status];
+  const stCls={want:'st-want',reading:'st-reading',finished:'st-finished'}[b.status];
+  const pct=b.totalPages>0&&b.lastPage>0?Math.min(100,Math.round(b.lastPage/b.totalPages*100)):0;
+  const list=state.checkins.filter(c=>c.bookId===b.id).sort((a,b2)=>b2.ts-a.ts);
+  const totalMin=list.reduce((a,c)=>a+c.minutes,0);
+  let timeline='';
+  if(!list.length)timeline='<div class="empty">还没有这本书的阅读记录，去读一读吧 📖</div>';
+  else timeline='<div class="btimeline">'+list.map(c=>{
+    const dt=new Date(c.ts);const tl=dateStr(dt).slice(5)+' '+pad(dt.getHours())+':'+pad(dt.getMinutes());
+    const pg=c.pageEnd?'<div class="pages">读到第 '+c.pageEnd+' 页'+(c.pages?'（本次 +'+c.pages+' 页）':'')+'</div>':'';
+    return '<div class="btline"><div class="tt">'+tl+'</div><div class="tc"><div class="min">'+c.minutes+' 分钟</div>'+
+      (c.note?'<div class="note">'+esc(c.note)+'</div>':'')+pg+
+      '<button class="mini del" data-act="delCheckin" data-id="'+c.id+'" data-bid="'+b.id+'" style="margin-top:6px" title="删除这条记录">🗑️</button></div></div>';
+  }).join('')+'</div>';
+  document.getElementById('bookDetailBody').innerHTML=
+    '<div class="bdetail">'+
+      '<div class="bcover" style="background:linear-gradient(135deg,'+color+','+shade(color)+')">'+esc(b.title.charAt(0))+'</div>'+
+      '<div class="btitle">'+esc(b.title)+'</div>'+
+      '<div class="bmeta">'+(b.author?esc(b.author)+' · ':'')+esc(b.category||'其他')+'</div>'+
+      '<div class="btagbar"><span class="statusdot '+stCls+'">'+stName+'</span>'+(b.totalPages?'<span class="tag">共 '+b.totalPages+' 页</span>':'')+'</div>'+
+      '<div class="bprog"><div class="nbar"><i style="width:'+pct+'%"></i></div><div class="bprognum">进度 '+b.lastPage+' / '+b.totalPages+' 页（'+pct+'%） · 累计阅读 '+totalMin+' 分钟</div></div>'+
+    '</div>'+
+    timeline+
+    '<div class="bdacts">'+(b.status==='finished'?'':'<button class="btn sun" data-act="finishBook" data-id="'+b.id+'">✅ 全书阅读完毕</button>')+'<button class="btn primary" data-act="editBook" data-id="'+b.id+'">✏️ 编辑书籍</button><button class="btn ghost" data-act="closeModal">关闭</button></div>';
+}
+
+/* ---- 家庭共享 ---- */
+function openFamily(){document.getElementById('familyInput').value=state.settings.familyCode||genCode();openModal('mFamily');}
+async function createFamily(){const code=(document.getElementById('familyInput').value||'').trim().toUpperCase();
+  if(code.length<4){toast('共享码至少4位');return;}
+  state.settings.familyCode=code;save();closeModal();await startSync();toast('☁️ 共享码 '+code+' 已开启');}
+async function joinFamily(){const code=(document.getElementById('familyInput').value||'').trim().toUpperCase();
+  if(!code){toast('请输入共享码');return;}
+  state.settings.familyCode=code;closeModal();
+  const ok=await doPull();   // 关键：先把云端数据拉进本机，再落盘/安排推送（推送的才是并集）
+  save();
+  await startSync();renderAll();
+  toast('🔑 已加入共享 '+code+(state.books.length||state.checkins.length?'':' ⚠️ 云端暂无数据'));}
+function exitFamily(){state.settings.familyCode=null;save();renderAll();toast('已退出家庭共享（本机数据保留）');}
+function copyCode(){const code=state.settings.familyCode;if(!code)return;
+  if(navigator.clipboard)navigator.clipboard.writeText(code);toast('已复制共享码：'+code);}
+
+/* ---- 个人档案（姓名 / 年龄 / 头像） ---- */
+const AVATARS=['👦','👧','🧒','👶','🐰','🐻','🦊','🐼','🦄','🐯','🐨','🐸','🦁','🐧','🐙','🦉','🌈','⭐'];
+let pfPick=null, pfPhoto=null;
+
+/* ---- 生日：年 / 月 / 日 三个下拉 ---- */
+function fillDays(sel){
+  const dS=document.getElementById('pfDay');if(!dS)return;
+  const y=+document.getElementById('pfYear').value, m=+document.getElementById('pfMonth').value;
+  const max=new Date(y,m,0).getDate();
+  dS.innerHTML='';
+  for(let d=1;d<=max;d++){const o=document.createElement('option');o.value=d;o.textContent=d;dS.appendChild(o);}
+  dS.value=Math.min(sel||1,max);
+}
+function fillBday(bd){
+  const yS=document.getElementById('pfYear'),mS=document.getElementById('pfMonth'),dS=document.getElementById('pfDay');
+  if(!yS||!mS||!dS)return;
+  const now=new Date();const p=(bd||'').split('-').map(Number);
+  if(!yS.options.length){for(let y=now.getFullYear();y>=now.getFullYear()-18;y--){const o=document.createElement('option');o.value=y;o.textContent=y;yS.appendChild(o);}}
+  if(!mS.options.length){for(let m=1;m<=12;m++){const o=document.createElement('option');o.value=m;o.textContent=m;mS.appendChild(o);}}
+  yS.value=p[0]||now.getFullYear()-6;
+  mS.value=p[1]||1;
+  fillDays(p[2]||1);
+  const ref=()=>fillDays(parseInt(dS.value,10)||1);
+  mS.onchange=ref;yS.onchange=ref;
+}
+function readBday(){
+  const y=document.getElementById('pfYear').value,m=document.getElementById('pfMonth').value,d=document.getElementById('pfDay').value;
+  if(!y||!m||!d)return '';
+  return y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+}
+
+/* ---- 本地照片头像（压缩到 256px 后存 base64，随共享一起同步） ---- */
+function pickPhoto(){document.getElementById('photoFile').click();}
+function onPhotoFile(e){
+  const f=e.target.files&&e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{const img=new Image();
+    img.onload=()=>{const S=256;const cv=document.createElement('canvas');cv.width=S;cv.height=S;
+      const ctx=cv.getContext('2d');const m=Math.min(img.width,img.height);
+      ctx.drawImage(img,(img.width-m)/2,(img.height-m)/2,m,m,0,0,S,S);
+      pfPhoto=cv.toDataURL('image/jpeg',0.75);
+      const p=document.getElementById('phPrev');if(p)p.innerHTML='<img src="'+pfPhoto+'">';
+      document.querySelectorAll('#pfAvatars button').forEach(x=>x.classList.remove('on'));};
+    img.src=r.result;};
+  r.readAsDataURL(f);e.target.value='';
+}
+function clearPhoto(){pfPhoto=null;explicitClearPhoto=true;state.child.updatedAt=Date.now();const p=document.getElementById('phPrev');
+  if(p)p.innerHTML=state.child.avatar||'👧';toast('已切回表情头像');}
+function openProfile(isFirst){
+  pfPick=state.child.avatar||'👧';
+  document.getElementById('pfTitle').textContent=isFirst?'👋 欢迎！先认识一下小读者':'✏️ 编辑小读者资料';
+  document.getElementById('pfDesc').textContent=isFirst?'填上名字、挑个喜欢的头像，就开始你的阅读冒险啦。':'随时可以更换名字、年龄和头像。';
+  document.getElementById('pfName').value=state.child.name||'';
+  pfPhoto=state.child.photo||null;
+  fillBday(state.child.birthday||'');
+  const ph=document.getElementById('phPrev');
+  if(ph)ph.innerHTML=pfPhoto?'<img src="'+pfPhoto+'">':(state.child.avatar||'👧');
+  const wrap=document.getElementById('pfAvatars');wrap.innerHTML='';
+  AVATARS.forEach(a=>{const b=document.createElement('button');b.type='button';b.textContent=a;
+    if(a===pfPick)b.className='on';
+    b.onclick=()=>{pfPick=a;wrap.querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');};
+    wrap.appendChild(b);});
+  openModal('mProfile');
+}
+function saveProfile(){
+  const name=(document.getElementById('pfName').value||'').trim();
+  if(!name){toast('请先填一个名字哦');return;}
+  const bd=readBday();
+  const yrs=parseInt(ageText(bd),10);
+  state.child.name=name;
+  state.child.birthday=bd;
+  state.child.age=yrs||state.child.age||6;
+  state.child.avatar=pfPick||'👧';
+  state.child.photo=pfPhoto||null;
+  state.child.setup=true;
+  state.child.updatedAt=Date.now();
+  save();renderAll();closeModal();
+  toast('🎉 欢迎你，'+name+'！');
+}
+
+/* ---- 导出/导入 ---- */
+function exportData(){const blob=new Blob([JSON.stringify(state)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='reading-'+state.child.name+'.json';a.click();toast('⬇️ 已导出备份');}
+function importData(file){const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);
+  if(!d.books||!d.checkins){toast('文件格式不对');return;}state=d;save();renderAll();toast('⬆️ 已导入备份');}catch(e){toast('导入失败');}};r.readAsText(file);}
+function downloadApp(){fetch(location.href).then(r=>r.text()).then(t=>{
+  const b=new Blob([t],{type:'text/html'});const a=document.createElement('a');
+  a.href=URL.createObjectURL(b);a.download='儿童阅读成长地图.html';a.click();
+  toast('💾 已开始下载 HTML 文件');}).catch(()=>toast('下载失败，请改用浏览器“另存为”'));}
+
+/* ---- 彩带 ---- */
+function celebrate(){const c=document.createElement('canvas');c.className='confetti';c.width=innerWidth;c.height=innerHeight;document.body.appendChild(c);
+  const ctx=c.getContext('2d');const cols=['#ffd166','#ff8fa3','#34c8a0','#5b9cf0','#b89bff','#ff9f6b'];const ps=[];
+  for(let i=0;i<120;i++)ps.push({x:Math.random()*c.width,y:-20-Math.random()*c.height,r:5+Math.random()*7,c:cols[i%cols.length],vy:2+Math.random()*4,vx:-2+Math.random()*4,rot:Math.random()*6,vr:-0.2+Math.random()*0.4});
+  let f=0;(function loop(){ctx.clearRect(0,0,c.width,c.height);
+    ps.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=0.05;p.rot+=p.vr;ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.rot);ctx.globalAlpha=Math.max(0,p.a||1);ctx.fillStyle=p.c;ctx.fillRect(-p.r/2,-p.r/2,p.r,p.r*0.6);ctx.restore();});
+    if(++f<150)requestAnimationFrame(loop);else c.remove();})();}
+
+/* ===================== 事件 ===================== */
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-act],[data-page]');if(!t)return;
+  const page=t.getAttribute('data-page');
+  if(page){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+page).classList.add('active');
+    document.querySelectorAll('.navitem').forEach(n=>n.classList.remove('on'));t.classList.add('on');
+    if(page==='cal')refreshHolidays().then(()=>renderCalendar()); // 进入日历页时确保节假日已拉取
+    return;}
+  const act=t.getAttribute('data-act');
+  switch(act){
+    case 'start':startTimer();break;
+    case 'finishToday':finishToday();break;
+    case 'stopTimer':stopTimer();break;
+    case 'cancelTimer':cancelTimer();break;
+    case 'minMinus':stepMin(-1);break;
+    case 'minPlus':stepMin(1);break;
+    case 'addBook':openBook(null);break;
+    case 'viewBook':openBookDetail(t.getAttribute('data-id'));break;
+    case 'editBook':openBook(t.getAttribute('data-id'));break;
+    case 'finishBook':finishBook(t.getAttribute('data-id'));break;
+    case 'delBook':delBook(t.getAttribute('data-id'));break;
+    case 'delCheckin':{const cid=t.getAttribute('data-id'),bid=t.getAttribute('data-bid');
+      showConfirm('删除这条阅读记录','删除后所有手机都会同步移除这条记录（含读后感），确定吗？',()=>{
+        delCheckin(cid);openBookDetail(bid);});}break;
+    case 'setBookStatus':setBookStatusSeg(t.getAttribute('data-value'));break;
+    case 'saveBook':saveBook();break;
+    case 'deleteBook':if(editId)delBook(editId);closeModal();break;
+    case 'submitCheckin':submitCheckin();break;
+    case 'closeModal':closeModal();break;
+    case 'openFamily':openFamily();break;
+    case 'genCode':document.getElementById('familyInput').value=genCode();break;
+    case 'createFamily':createFamily();break;
+    case 'joinFamily':joinFamily();break;
+    case 'localOnly':closeModal();break;
+    case 'exitFamily':exitFamily();break;
+    case 'copyCode':copyCode();break;
+    case 'trendWeek':trendMode='week';renderReport();break;
+    case 'trendMonth':trendMode='month';renderReport();break;
+    case 'trendLast':trendMode='last';renderReport();break;
+    case 'calPrev':calShift(-1);break;
+    case 'calNext':calShift(1);break;
+    case 'dayOpen':openDayDetail(t.getAttribute('data-date'));break;
+    case 'export':exportData();break;
+    case 'import':document.getElementById('importFile').click();break;
+    case 'downloadApp':downloadApp();break;
+    case 'editProfile':openProfile(false);break;
+    case 'gotoBadges':gotoPage('badges');break;
+    case 'saveProfile':saveProfile();break;
+    case 'pickPhoto':pickPhoto();break;
+    case 'clearPhoto':clearPhoto();break;
+    case 'reset':showConfirm('清空全部数据','将删除所有书籍、打卡记录、成长数据和云端家庭共享记录，且无法恢复。\n确定要清空吗？',()=>{
+      const fam=state.settings.familyCode;
+      state=seed();                                 // 内存置空（child/books/checkins/familyCode 全空）
+      persist();                                    // 本地 IndexedDB / localStorage 落空
+      renderAll();toast('🧹 已清空全部数据');
+      if(SB&&fam){state.settings.familyCode=fam;doPush(true).finally(()=>{state.settings.familyCode=null;persist();});} // 用原 familyCode 把空状态推到云端，彻底清掉家庭共享记录
+    });break;
+    case 'confirmOk':{const f=confirmCb;confirmCb=null;closeModal();if(f)f();}break;
+    case 'confirmCancel':confirmCb=null;closeModal();break;
+  }
+});
+document.getElementById('importFile').addEventListener('change',e=>{if(e.target.files[0])importData(e.target.files[0]);e.target.value='';});
+document.getElementById('photoFile').addEventListener('change',onPhotoFile);
+
+/* 背景装饰 */
+(function deco(){const wrap=document.getElementById('bgDeco');
+  const cloud='<svg class="cloud" viewBox="0 0 120 60"><g fill="#ffffff"><ellipse cx="35" cy="38" rx="32" ry="20"/><ellipse cx="65" cy="30" rx="28" ry="22"/><ellipse cx="90" cy="40" rx="24" ry="16"/></g></svg>';
+  wrap.insertAdjacentHTML('beforeend',cloud.replace('class="cloud"','class="cloud c1"'));
+  wrap.insertAdjacentHTML('beforeend',cloud.replace('class="cloud"','class="cloud c2"'));
+  wrap.insertAdjacentHTML('beforeend',cloud.replace('class="cloud"','class="cloud c3"'));
+  for(let i=0;i<16;i++){const s=document.createElement('div');s.className='star';s.textContent='✦';
+    s.style.left=Math.random()*100+'%';s.style.top=Math.random()*80+'%';s.style.animationDelay=(Math.random()*3)+'s';wrap.appendChild(s);}
+})();
+
+/* ===================== 启动 ===================== */
+(async function init(){
+  state=seed();        // 先用空状态，保证 UI 与按钮立即可用（不依赖任何网络/存储）
+  renderAll();
+  await initSupabase();// 仅在配置了 Supabase 时才去加载脚本，否则完全不阻塞
+  const saved=await loadState();
+  if(saved)state=saved;
+  if(!state.settings)state.settings={familyCode:null};
+  if(!state.child)state.child={name:'',age:6,avatar:'👧',setup:false,updatedAt:0};
+  if(!state.deleted)state.deleted={books:{},checkins:{}};
+  if(saved)save();     // 仅当确有已加载的数据时才落稳（避免把空状态写回覆盖云端/本地）
+  renderAll();
+  // 已开启共享：先拉云端（把家人的小读者资料与数据合并到本机），再决定是否提示设置，避免重复弹窗
+  if(SB&&state.settings.familyCode){ await startSync(); }
+  if(!state.child.setup)openProfile(true);            // 首次进入：先设置姓名与头像
+  else{maybeDailyCheer();                             // 每天第一次打开：弹出今日鼓励寄语
+    if(SB&&!state.settings.familyCode)openFamily();}
+  refreshHolidays().then(()=>renderCalendar());       // 启动即拉取当年(+11月起的下一年)节假日，成功后刷新日历
+})();
+</script>
+</body>
+</html>
