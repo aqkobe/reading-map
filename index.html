@@ -189,6 +189,8 @@
   .cday.today{outline:2.5px solid var(--green);outline-offset:-1px;}
   .cday.empty{background:transparent;cursor:default;}
   .calhint{font-size:11.5px;font-weight:700;color:var(--ink-soft);margin-top:9px;text-align:center;}
+  .cday .chd{position:absolute;top:1px;right:2px;font-size:8.5px;font-weight:900;color:#fff;background:#e05a4e;border-radius:6px;padding:0 4px;line-height:1.5;z-index:1;}
+  .cday .chd.chw{background:#4a7fd4;}
   .clist{display:flex;flex-direction:column;gap:10px;}
   .citem{display:flex;gap:10px;align-items:center;background:#fafcff;border-radius:14px;padding:11px 13px;box-shadow:var(--shadow-sm);}
   .citem .cm{font-size:18px;font-weight:900;color:var(--green-d);white-space:nowrap;}
@@ -398,7 +400,7 @@
           </div>
         </div>
         <div class="calgrid" id="calGrid"></div>
-        <div class="calhint">👆 点某一天，看那天读了哪本书、读了多久</div>
+        <div class="calhint">👆 点某一天，看那天读了哪本书 · 角标 <span class="chd" style="position:static">休</span>=法定节假日 <span class="chd chw" style="position:static">班</span>=调休上班</div>
       </div>
       <div class="card">
         <div class="sec-ttl">📝 最近打卡</div>
@@ -1097,7 +1099,9 @@ function renderCalendar(){
   for(let i=0;i<off;i++)html+='<div class="cday empty"></div>';
   for(let i=1;i<=days;i++){const key=calYM+'-'+pad(i);
     const mi=state.checkins.filter(c=>c.date===key).reduce((a,c)=>a+c.minutes,0);
+    const hol=holidayOf(key);
     html+='<div class="cday'+(mi>0?' has':'')+(key===today?' today':'')+'" data-act="dayOpen" data-date="'+key+'" title="'+mi+' 分钟">'+
+      (hol?'<span class="chd'+(hol.rest?'':' chw')+'" title="'+hol.name+'">'+(hol.rest?'休':'班')+'</span>':'')+
       '<div>'+i+'</div>'+(mi>0?'<div class="cm">'+mi+'分</div>':'')+'</div>';}
   grid.innerHTML=html;
 }
@@ -1111,8 +1115,9 @@ function openDayDetail(key){ // 点日历某一天 → 弹出这天的打卡明�
   const list=state.checkins.filter(c=>c.date===key).sort((a,b)=>a.ts-b.ts);
   const total=list.reduce((a,c)=>a+c.minutes,0);
   const p=key.split('-').map(Number);
-  document.getElementById('dayTitle').textContent=p[1]+'月'+p[2]+'日';
-  document.getElementById('daySub').textContent=total>0?'这一天共读了 '+total+' 分钟，真棒！':'这一天还没有阅读记录';
+  const hol=holidayOf(key);
+  document.getElementById('dayTitle').textContent=p[1]+'月'+p[2]+'日'+(hol?' · '+hol.name+(hol.rest?'':'（调休上班）'):'');
+  document.getElementById('daySub').textContent=total>0?(hol&&hol.rest?''+hol.name+'读了 '+total+' 分钟，真棒！':'这一天共读了 '+total+' 分钟，真棒！'):(hol&&hol.rest?''+hol.name+'，痛痛快快玩一天，也别忘了读一会儿书哦':'这一天还没有阅读记录');
   const box=document.getElementById('dayList');
   if(!list.length)box.innerHTML='<div class="empty" style="padding:24px 10px">这一天还是空白的，去打卡点亮它吧 🌟</div>';
   else box.innerHTML='<div class="clist">'+list.map(c=>{
@@ -1123,6 +1128,38 @@ function openDayDetail(key){ // 点日历某一天 → 弹出这天的打卡明�
   }).join('')+'</div>';
   openModal('mDay');
 }
+
+/* —— 法定节假日：数据源 holiday-cn（自动同步国务院公告，经 jsdelivr CDN，国内可达）——
+   缓存策略：某年数据拉取成功后永久存本机，之后不再请求；
+   每年 11 月起尝试拉取下一年——已发布就直接缓存，未发布或失败则每天最多重试一次 */
+function holidayCache(){try{return JSON.parse(localStorage.getItem('rgm_holiday_cn')||'{}');}catch(e){return {};}}
+function saveHolidayCache(c){try{localStorage.setItem('rgm_holiday_cn',JSON.stringify(c));}catch(e){}}
+async function ensureHoliday(year){
+  const c=holidayCache();
+  if(c[year])return c[year];                   // 已缓存：不再调用
+  if(c['att_'+year]===todayStr())return null;  // 今天已试过（未发布/失败）：明天再试
+  c['att_'+year]=todayStr();saveHolidayCache(c);
+  try{
+    const opt=(typeof AbortSignal!=='undefined'&&AbortSignal.timeout)?{signal:AbortSignal.timeout(8000)}:{};
+    const r=await fetch('https://cdn.jsdelivr.net/gh/NateScarlet/holiday-cn@master/'+year+'.json',opt);
+    if(!r.ok)return null;
+    const j=await r.json();
+    if(!j||!Array.isArray(j.days)||!j.days.length)return null; // 官方还没发布该年安排
+    const map={};
+    j.days.forEach(x=>{if(x&&x.date&&/^\d{4}-\d{2}-\d{2}$/.test(x.date))map[x.date]={name:x.name||'',rest:!!x.isOffDay};});
+    if(!Object.keys(map).length)return null;
+    c[year]=map;delete c['att_'+year];saveHolidayCache(c);
+    return map;
+  }catch(e){console.warn('节假日拉取失败('+year+'):',e&&e.message||e);return null;}
+}
+async function refreshHolidays(){
+  const y=Number(todayStr().slice(0,4));
+  const a=await ensureHoliday(y);
+  let b=null;
+  if(Number(todayStr().slice(5,7))>=11)b=await ensureHoliday(y+1); // 每年11月起抓下一年
+  return a||b;
+}
+function holidayOf(key){const c=holidayCache();return (c[key.slice(0,4)]||{})[key]||null;}
 function ageText(bd){ // bd: 'YYYY-MM-DD' → "6岁3个月"，按当天动态计算
   if(!bd)return '';const p=bd.split('-').map(Number);
   if(p.length<2||!p[0]||isNaN(p[0]))return '';
@@ -1653,7 +1690,9 @@ document.addEventListener('click',e=>{
   const t=e.target.closest('[data-act],[data-page]');if(!t)return;
   const page=t.getAttribute('data-page');
   if(page){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+page).classList.add('active');
-    document.querySelectorAll('.navitem').forEach(n=>n.classList.remove('on'));t.classList.add('on');return;}
+    document.querySelectorAll('.navitem').forEach(n=>n.classList.remove('on'));t.classList.add('on');
+    if(page==='cal')refreshHolidays().then(()=>renderCalendar()); // 进入日历页时确保节假日已拉取
+    return;}
   const act=t.getAttribute('data-act');
   switch(act){
     case 'start':startTimer();break;
@@ -1740,6 +1779,7 @@ document.getElementById('photoFile').addEventListener('change',onPhotoFile);
   if(!state.child.setup)openProfile(true);            // 首次进入：先设置姓名与头像
   else{maybeDailyCheer();                             // 每天第一次打开：弹出今日鼓励寄语
     if(SB&&!state.settings.familyCode)openFamily();}
+  refreshHolidays().then(()=>renderCalendar());       // 启动即拉取当年(+11月起的下一年)节假日，成功后刷新日历
 })();
 </script>
 </body>
