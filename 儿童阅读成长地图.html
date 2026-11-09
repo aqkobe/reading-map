@@ -771,7 +771,7 @@ const BADGES=[
   {id:'note',icon:'✍️',name:'小小记录员',desc:'写下第一条读后感',test:s=>s.hasNote},
   {id:'hero10',icon:'🦸',name:'阅读小英雄',desc:'累计打卡满 10 次',test:s=>s.checkinsCount>=10},
   {id:'goal',icon:'🎯',name:'目标达成',desc:'单次完成 20 分钟目标',test:s=>s.hasGoal},
-  {id:'weekfull',icon:'🌈',name:'一周全勤',desc:'本周 7 天全部打卡',test:s=>s.weekFull},
+  {id:'weekfull',icon:'🌈',name:'一周全勤',desc:'完整一周（本周或上周）7 天都打卡',test:s=>s.weekFull},
   {id:'expert',icon:'🏆',name:'阅读达人',desc:'积分达到 300 分',test:s=>s.points>=300},
   {id:'master',icon:'🎓',name:'阅读大师',desc:'积分达到 1000 分',test:s=>s.points>=1000},
   {id:'sage',icon:'🌟',name:'阅读宗师',desc:'积分达到 3000 分',test:s=>s.points>=3000},
@@ -803,7 +803,7 @@ function badgeState(s){const cs=state.checkins;
     hasGoal:cs.some(c=>c.minutes>=GOAL),
     earlyBird:cs.some(c=>new Date(c.ts).getHours()<8),
     nightOwl:cs.some(c=>new Date(c.ts).getHours()>=21),
-    weekFull:last7().arr.length===7&&last7().arr.every(x=>x.m>0)};
+    weekFull:weekFullCheck()};
   const o={};BADGES.forEach(b=>o[b.id]=!!b.test(ext));return o;}
 const MAP=[
   /* —— 启程·打卡 —— */
@@ -1030,6 +1030,14 @@ function last7(){ // 自然周：周一 → 周日，符合日历习惯
     const m=state.checkins.filter(c=>c.date===key).reduce((a,c)=>a+c.minutes,0);sum+=m;
     arr.push({key,m,label:['一','二','三','四','五','六','日'][i],isToday:key===today});}
   return {arr,min:sum};}
+function weekFullCheck(){ // 一周全勤：当前自然周 7 天全打卡，或上一个完整自然周 7 天全打卡
+  // 否则周一~周六期间本周永远凑不齐 7 天，上周全勤的孩子永远点不亮这个徽章
+  const now=new Date();const dow=now.getDay();const diff=(dow===0?-6:1-dow);
+  const mon=new Date(now);mon.setDate(now.getDate()+diff);
+  const full=off=>{for(let i=0;i<7;i++){const d=new Date(mon);d.setDate(mon.getDate()+i+off*7);
+    const key=dateStr(d);
+    if(state.checkins.filter(c=>c.date===key).reduce((a,c)=>a+c.minutes,0)<=0)return false;}return true;};
+  return full(0)||full(-1);}
 
 /* —— 趋势图周期切换：本周 / 本月 / 上月 —— */
 let trendMode='week';
