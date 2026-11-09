@@ -400,7 +400,7 @@
           </div>
         </div>
         <div class="calgrid" id="calGrid"></div>
-        <div class="calhint">👆 点某一天，看那天读了哪本书 · 角标 <span class="chd" style="position:static">休</span>=法定节假日 <span class="chd chw" style="position:static">班</span>=调休上班</div>
+        <div class="calhint">👆 点某一天，看那天读了哪本书 · 角标 <span class="chd" style="position:static">休</span>=放假 <span class="chd chw" style="position:static">上学</span>=调休上学</div>
       </div>
       <div class="card">
         <div class="sec-ttl">📝 最近打卡</div>
@@ -1101,7 +1101,7 @@ function renderCalendar(){
     const mi=state.checkins.filter(c=>c.date===key).reduce((a,c)=>a+c.minutes,0);
     const hol=holidayOf(key);
     html+='<div class="cday'+(mi>0?' has':'')+(key===today?' today':'')+'" data-act="dayOpen" data-date="'+key+'" title="'+mi+' 分钟">'+
-      (hol?'<span class="chd'+(hol.rest?'':' chw')+'" title="'+hol.name+'">'+(hol.rest?'休':'班')+'</span>':'')+
+      (hol?'<span class="chd'+(hol.rest?'':' chw')+'" title="'+hol.name+'">'+(hol.rest?'休':'上学')+'</span>':'')+
       '<div>'+i+'</div>'+(mi>0?'<div class="cm">'+mi+'分</div>':'')+'</div>';}
   grid.innerHTML=html;
 }
@@ -1116,7 +1116,7 @@ function openDayDetail(key){ // 点日历某一天 → 弹出这天的打卡明�
   const total=list.reduce((a,c)=>a+c.minutes,0);
   const p=key.split('-').map(Number);
   const hol=holidayOf(key);
-  document.getElementById('dayTitle').textContent=p[1]+'月'+p[2]+'日'+(hol?' · '+hol.name+(hol.rest?'':'（调休上班）'):'');
+  document.getElementById('dayTitle').textContent=p[1]+'月'+p[2]+'日'+(hol?' · '+hol.name+(hol.rest?'':'（调休，要上学哦）'):'');
   document.getElementById('daySub').textContent=total>0?(hol&&hol.rest?''+hol.name+'读了 '+total+' 分钟，真棒！':'这一天共读了 '+total+' 分钟，真棒！'):(hol&&hol.rest?''+hol.name+'，痛痛快快玩一天，也别忘了读一会儿书哦':'这一天还没有阅读记录');
   const box=document.getElementById('dayList');
   if(!list.length)box.innerHTML='<div class="empty" style="padding:24px 10px">这一天还是空白的，去打卡点亮它吧 🌟</div>';
