@@ -1106,10 +1106,15 @@ function renderCalendar(){
   grid.innerHTML=html;
 }
 function calShift(d){
+  // 往前不限；往后最多看到明年年底（节假日数据每年11月已发布次年，正好能提前看）
   const cur=todayStr().slice(0,7);
-  if(d>0&&calYM>=cur){toast('已经是最新的一个月啦～');return;}
+  const maxYM=(new Date().getFullYear()+1)+'-12';
+  if(d>0&&calYM>=maxYM){toast('下一年的日历要等哦～');return;}
+  if(d<0&&calYM<='2025-12')return; // 别翻到 app 诞生前太久
   const p=calYM.split('-').map(Number);const nd=new Date(p[0],p[1]-1+d,1);
-  calYM=nd.getFullYear()+'-'+pad(nd.getMonth()+1);renderCalendar();
+  const nym=nd.getFullYear()+'-'+pad(nd.getMonth()+1);
+  calYM=nym;renderCalendar();
+  if(nym>cur)ensureHoliday(Number(nym.slice(0,4))).then(()=>renderCalendar()); // 翻到未来年份时按需拉节假日
 }
 function openDayDetail(key){ // 点日历某一天 → 弹出这天的打卡明细
   const list=state.checkins.filter(c=>c.date===key).sort((a,b)=>a.ts-b.ts);
