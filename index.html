@@ -771,7 +771,7 @@ const BADGES=[
   {id:'note',icon:'✍️',name:'小小记录员',desc:'写下第一条读后感',test:s=>s.hasNote},
   {id:'hero10',icon:'🦸',name:'阅读小英雄',desc:'累计打卡满 10 次',test:s=>s.checkinsCount>=10},
   {id:'goal',icon:'🎯',name:'目标达成',desc:'单次完成 20 分钟目标',test:s=>s.hasGoal},
-  {id:'weekfull',icon:'🌈',name:'一周全勤',desc:'完整一周（本周或上周）7 天都打卡',test:s=>s.weekFull},
+  {id:'weekfull',icon:'🌈',name:'一周全勤',desc:'任意一周 7 天都打卡（达成后永久点亮）',test:s=>s.weekFull},
   {id:'expert',icon:'🏆',name:'阅读达人',desc:'积分达到 300 分',test:s=>s.points>=300},
   {id:'master',icon:'🎓',name:'阅读大师',desc:'积分达到 1000 分',test:s=>s.points>=1000},
   {id:'sage',icon:'🌟',name:'阅读宗师',desc:'积分达到 3000 分',test:s=>s.points>=3000},
@@ -1030,14 +1030,23 @@ function last7(){ // 自然周：周一 → 周日，符合日历习惯
     const m=state.checkins.filter(c=>c.date===key).reduce((a,c)=>a+c.minutes,0);sum+=m;
     arr.push({key,m,label:['一','二','三','四','五','六','日'][i],isToday:key===today});}
   return {arr,min:sum};}
-function weekFullCheck(){ // 一周全勤：当前自然周 7 天全打卡，或上一个完整自然周 7 天全打卡
-  // 否则周一~周六期间本周永远凑不齐 7 天，上周全勤的孩子永远点不亮这个徽章
-  const now=new Date();const dow=now.getDay();const diff=(dow===0?-6:1-dow);
-  const mon=new Date(now);mon.setDate(now.getDate()+diff);
-  const full=off=>{for(let i=0;i<7;i++){const d=new Date(mon);d.setDate(mon.getDate()+i+off*7);
-    const key=dateStr(d);
-    if(state.checkins.filter(c=>c.date===key).reduce((a,c)=>a+c.minutes,0)<=0)return false;}return true;};
-  return full(0)||full(-1);}
+function weekFullCheck(){ // 一周全勤：历史上出现过任意一个完整自然周(周一~周日)7天全打卡即永久点亮
+  // 徽章应该"达成一次、永久拥有"——不能因为最近两周没全勤就把 9 月的成就抹掉
+  const dates=new Set(state.checkins.filter(c=>c.minutes>0).map(c=>c.date));
+  if(!dates.size)return false;
+  const sorted=[...dates].sort();
+  const first=new Date(sorted[0]+'T00:00:00');
+  const fd=first.getDay();const fdiff=(fd===0?-6:1-fd);
+  const start=new Date(first);start.setDate(first.getDate()+fdiff); // 最早打卡所在周的周一
+  const now=new Date();const nd=now.getDay();const ndiff=(nd===0?-6:1-nd);
+  const curMon=new Date(now);curMon.setDate(now.getDate()+ndiff);   // 当前周的周一
+  for(let d=new Date(start);d<=curMon;d.setDate(d.getDate()+7)){
+    let ok=true;
+    for(let i=0;i<7;i++){const x=new Date(d);x.setDate(d.getDate()+i);
+      if(!dates.has(dateStr(x))){ok=false;break;}}
+    if(ok)return true;
+  }
+  return false;}
 
 /* —— 趋势图周期切换：本周 / 本月 / 上月 —— */
 let trendMode='week';
