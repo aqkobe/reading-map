@@ -195,6 +195,8 @@
   .citem .cm{font-size:18px;font-weight:900;color:var(--green-d);white-space:nowrap;}
   .citem .cx{flex:1;min-width:0;}
   .citem .cn{font-size:13px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .citem .cn.canexpand{cursor:pointer;}
+  .citem .cn.expanded{white-space:normal;overflow:visible;text-overflow:clip;word-break:break-word;line-height:1.5;}
   .citem .ct{font-size:11px;color:var(--ink-soft);font-weight:600;margin-top:2px;}
   .nav{position:absolute;left:0;right:0;bottom:0;z-index:20;display:flex;justify-content:space-around;background:rgba(255,255,255,.82);backdrop-filter:blur(14px);padding:10px 8px calc(10px + env(safe-area-inset-bottom));box-shadow:0 -8px 24px rgba(80,110,160,.12);border-top:1px solid rgba(255,255,255,.6);}
   .navitem{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;color:var(--ink-soft);font-size:11px;font-weight:800;padding:4px 0;transition:color .2s;font-family:inherit;}
@@ -978,9 +980,10 @@ function renderToday(){
   if(!list.length){card.style.display='none';return;}
   card.style.display='';
   box.innerHTML=list.map(c=>{const book=state.books.find(b=>b.id===c.bookId);
+    const long=c.note&&c.note.length>20; // 长读后感：点卡片展开看全文
     return '<div class="citem"><div class="cm">'+c.minutes+'<small style="font-size:11px;color:var(--ink-soft)">分</small></div>'+
-    '<div class="cx"><div class="cn">'+(esc(c.note)||'今天读了 '+c.minutes+' 分钟')+'</div><div class="ct">'+
-    (book?'📖 '+book.title+' · ':'')+(c.pageEnd?'读到第 '+c.pageEnd+' 页':'')+'</div></div></div>';}).join('');
+    '<div class="cx"><div class="cn'+(long?' canexpand':'')+'">'+(esc(c.note)||'今天读了 '+c.minutes+' 分钟')+'</div><div class="ct">'+
+    (book?'📖 '+book.title+' · ':'')+(c.pageEnd?'读到第 '+c.pageEnd+' 页':'')+(long?' · <span style="color:var(--green-d)">👆点看全文</span>':'')+'</div></div></div>';}).join('');
 }
 
 let curTab='all';
@@ -1142,9 +1145,10 @@ function openDayDetail(key){ // 点日历某一天 → 弹出这天的打卡明�
   if(!list.length)box.innerHTML='<div class="empty" style="padding:24px 10px">这一天还是空白的，去打卡点亮它吧 🌟</div>';
   else box.innerHTML='<div class="clist">'+list.map(c=>{
     const dt=new Date(c.ts);const book=state.books.find(b=>b.id===c.bookId);
+    const long=c.note&&c.note.length>20; // 长读后感：点卡片展开看全文
     return '<div class="citem"><div class="cm">'+c.minutes+'<small style="font-size:11px;color:var(--ink-soft)">分</small></div>'+
-      '<div class="cx"><div class="cn">'+(esc(c.note)||'读了 '+c.minutes+' 分钟')+'</div><div class="ct">'+pad(dt.getHours())+':'+pad(dt.getMinutes())+' · '+(book?'📖 '+book.title:'未关联书籍')+
-      (c.pageEnd?' · 读到第 '+c.pageEnd+' 页':'')+'</div></div></div>';
+      '<div class="cx"><div class="cn'+(long?' canexpand':'')+'">'+(esc(c.note)||'读了 '+c.minutes+' 分钟')+'</div><div class="ct">'+pad(dt.getHours())+':'+pad(dt.getMinutes())+' · '+(book?'📖 '+book.title:'未关联书籍')+
+      (c.pageEnd?' · 读到第 '+c.pageEnd+' 页':'')+(long?' · <span style="color:var(--green-d)">👆点看全文</span>':'')+'</div></div></div>';
   }).join('')+'</div>';
   openModal('mDay');
 }
@@ -1204,9 +1208,10 @@ function renderReport(){
   else rl.innerHTML='<div class="clist">'+recent.map(c=>{
     const dt=new Date(c.ts);const tl=dateStr(dt).slice(5)+' '+pad(dt.getHours())+':'+pad(dt.getMinutes());
     const book=state.books.find(b=>b.id===c.bookId);
+    const long=c.note&&c.note.length>20; // 长读后感单行放不下：点卡片可展开看全文
     return '<div class="citem"><div class="cm">'+c.minutes+'<small style="font-size:11px;color:var(--ink-soft)">分</small></div>'+
-      '<div class="cx"><div class="cn">'+(esc(c.note)||'读了 '+c.minutes+' 分钟')+'</div><div class="ct">'+tl+' · '+(book?'📖 '+book.title:'未关联书籍')+
-      (c.pageEnd?' · 读到第 '+c.pageEnd+' 页':'')+'</div></div></div>';
+      '<div class="cx"><div class="cn'+(long?' canexpand':'')+'">'+(esc(c.note)||'读了 '+c.minutes+' 分钟')+'</div><div class="ct">'+tl+' · '+(book?'📖 '+book.title:'未关联书籍')+
+      (c.pageEnd?' · 读到第 '+c.pageEnd+' 页':'')+(long?' · <span style="color:var(--green-d)">👆点看全文</span>':'')+'</div></div></div>';
   }).join('')+'</div>';
   const dc=dailyCheer(); // 报告底部：每日随机鼓励语（当天固定，跨天更换）
   const rce=document.getElementById('reportCheerEm');if(rce)rce.textContent=dc.em;
@@ -1771,6 +1776,9 @@ async function retryCloud(){ // 云组件（supabase-js）加载失败时的手�
   else toast('⚠️ 仍然失败，请检查网络或换一个网络环境后再试');
 }
 document.getElementById('importFile').addEventListener('change',e=>{if(e.target.files[0])importData(e.target.files[0]);e.target.value='';});
+// 打卡卡片：读后感超过一行被省略号截断时，点卡片展开看全文，再点收起（今日打卡/最近打卡/日历当日明细三处通用）
+document.addEventListener('click',e=>{const t=e.target.closest('.citem');if(!t)return;
+  const n=t.querySelector('.cn.canexpand');if(n)n.classList.toggle('expanded');});
 document.getElementById('photoFile').addEventListener('change',onPhotoFile);
 
 /* 背景装饰 */
