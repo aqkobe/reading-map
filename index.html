@@ -1220,7 +1220,9 @@ function renderBadges(){
 function renderAll(){renderHome();renderBooks();renderMap();renderReport();renderBadges();}
 
 /* ===================== 云端同步 ===================== */
-let lastSeenUpdatedAt=null, pushTimer=null, syncState='syn', syncLabel='同步中…', explicitClearPhoto=false, syncPolling=false;
+const BUILD='20261112a'; // 版本戳：手机回到前台时核对线上版本，不同则自动刷新（防止旧页面一直跑旧逻辑收不到家人更新）
+let lastSeenUpdatedAt=null, pushTimer=null, syncState='syn', syncLabel='同步中…', explicitClearPhoto=false, syncPolling=false, lastSyncOk=0;
+function syncOkLabel(){const d=new Date();return '已同步 · '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
 function setSync(st,label){syncState=st;if(label)syncLabel=label;const d=document.getElementById('syncDot');if(d){d.className='syncdot '+st;d.textContent=label;}}
 function schedulePush(){if(!SB||!state.settings.familyCode)return;clearTimeout(pushTimer);pushTimer=setTimeout(doPush,800);}
 async function doPush(force){if(!SB||!state.settings.familyCode)return;
@@ -1256,7 +1258,7 @@ async function doPush(force){if(!SB||!state.settings.familyCode)return;
     if(i<2)await new Promise(res=>setTimeout(res,(i+1)*2000));
   }
   if(error){setSync('err','同步失败');console.warn(error);}
-  else{lastSeenUpdatedAt=ts;setSync('ok','已同步 ☁️');} // 记录自己刚写的时间串，抑制回显渲染
+  else{lastSeenUpdatedAt=ts;lastSyncOk=Date.now();setSync('ok',syncOkLabel());} // 记录自己刚写的时间串，抑制回显渲染
 }
 let syncBlockedWarned=false;
 function warnBlockedOnce(){ // 本地预览服务可能带 CSP connect-src 白名单（不含 supabase），浏览器会拦截全部同步请求
@@ -1272,6 +1274,7 @@ async function doPull(){if(!SB||!state.settings.familyCode)return false;
   }catch(e){ // 网络级异常（断网/超时/被 CSP 拦截）：请求根本没成功，也如实报失败
     setSync('err','同步失败');console.warn('拉取云端网络异常:',e&&e.message||e);warnBlockedOnce();return false;}
   if(!data)return true; // 云端还没有该共享码的行（全新家庭），正常
+  lastSyncOk=Date.now();setSync('ok',syncOkLabel());
   // 关键防护③自愈：云端是空的而本机有数据（说明曾被某台设备用空数据覆盖过）→ 立即推送恢复云端
   const rd=data.data||{};
   const remoteEmpty=!(rd.books&&rd.books.length)&&!(rd.checkins&&rd.checkins.length)&&!(rd.child&&rd.child.setup);
@@ -1316,14 +1319,32 @@ function bindSync(){if(!SB||!state.settings.familyCode||syncBound)return;syncBou
     .on('postgres_changes',{event:'UPDATE',schema:'public',table:'reading_state',filter:'family_id=eq.'+state.settings.familyCode},()=>doPull())
     .subscribe();
 }
+let verChecked=0;
+async function checkNewVersion(){ // 手机页面常一连开好几天：回到前台时核对线上版本，避免一直跑旧逻辑导致"死活看不到家人新记录"
+  if(Date.now()-verChecked<30*60*1000)return;verChecked=Date.now();
+  try{const r=await fetch(location.href,{cache:'no-store'});const t=await r.text();
+    const m=t.match(/BUILD='([^']+)'/); // 文件里 BUILD 常量声明在前，最先匹配到的就是版本值
+    if(m&&m[1]!==BUILD){
+      const ae=document.activeElement;
+      if(ae&&/INPUT|TEXTAREA/.test(ae.tagName)){toast('🔁 有新版本，打完字后刷新页面即可更新');verChecked=0;}
+      else{toast('🔁 发现新版本，正在自动更新…');setTimeout(()=>location.reload(),1500);verChecked=0;}
+    }
+  }catch(e){}}
+function resumeSync(){ // 页面从后台回到前台：立刻拉云端 + 核对版本（后台挂久了轮询和实时订阅可能早就失效）
+  if(!state.settings.familyCode)return;
+  doPull();checkNewVersion();}
 async function startSync(){if(!SB)return;bindSync();
   // 定时轮询作为实时订阅的兜底：即便 Supabase Realtime 未开启该表，也能定期拉取家人更新
   if(!syncPolling){syncPolling=true;
     setInterval(()=>{if(state.settings.familyCode)doPull();},15000);
     // 切回前台立刻拉一次：不用等 15 秒轮询，B 手机打开 app 就能看到家人最新数据
-    document.addEventListener('visibilitychange',()=>{if(!document.hidden&&state.settings.familyCode)doPull();});}
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden)resumeSync();});
+    // 断网恢复后立刻补拉一次
+    window.addEventListener('online',resumeSync);
+    // 兜底：个别 WebView/长驻页面不触发 visibilitychange，用户第一次点按页面时若超过 30 秒没同步过则补拉
+    document.addEventListener('pointerdown',()=>{if(Date.now()-lastSyncOk>30000)resumeSync();},true);}
   const ok=await doPull();
-  setSync(ok===false?'err':'ok',ok===false?'同步失败，稍后自动重试':'已同步 ☁️');}
+  setSync(ok===false?'err':'ok',ok===false?'同步失败，稍后自动重试':syncOkLabel());}
 
 /* ===================== 交互 ===================== */
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2200);}
