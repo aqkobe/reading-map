@@ -1247,11 +1247,13 @@ function renderBadges(){
 function renderAll(){renderHome();renderBooks();renderMap();renderReport();renderBadges();}
 
 /* ===================== 云端同步 ===================== */
-const BUILD='20261112b'; // 版本戳：手机回到前台时核对线上版本，不同则自动刷新（防止旧页面一直跑旧逻辑收不到家人更新）
+const BUILD='20261113a'; // 版本戳：手机回到前台时核对线上版本，不同则自动刷新（防止旧页面一直跑旧逻辑收不到家人更新）
 let lastSeenUpdatedAt=null, pushTimer=null, syncState='syn', syncLabel='同步中…', explicitClearPhoto=false, syncPolling=false, lastSyncOk=0;
 function syncOkLabel(){const d=new Date();return '已同步 · '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
 function setSync(st,label){syncState=st;if(label)syncLabel=label;const d=document.getElementById('syncDot');if(d){d.className='syncdot '+st;d.textContent=label;}}
-function schedulePush(){if(!SB||!state.settings.familyCode)return;clearTimeout(pushTimer);pushTimer=setTimeout(doPush,800);}
+let pendingPush=false,pushFailToastAt=0; // pendingPush：本机有数据没推上云端（如夜间弱网推送失败），网络恢复/回前台/轮询时自动补传
+function schedulePush(){if(!state.settings.familyCode)return;pendingPush=true; // 先标记待传，即使云组件尚未加载好也不会漏（SB 就绪后由轮询/回前台补传）
+  if(!SB)return;clearTimeout(pushTimer);pushTimer=setTimeout(doPush,800);}
 async function doPush(force){if(!SB||!state.settings.familyCode)return;
   setSync('syn','同步中…');
   const ts=new Date().toISOString();
@@ -1262,11 +1264,10 @@ async function doPush(force){if(!SB||!state.settings.familyCode)return;
       if(error)readFail=true;
       else if(data&&data.data){remote=data.data;if(data.data.child)remotePhoto=data.data.child.photo;}}catch(e){readFail=true;}
     // 关键防护①：推送前读取云端失败 → 本次绝不推送（旧代码把失败当「云端没数据」，导致空数据覆盖云端）
-    if(readFail){setSync('err','同步失败');console.warn('推送前读取云端失败，本次跳过推送，稍后自动重试');return;}
-    if(remote){mergeRemote(remote);await persist();renderAll();}
+    if(readFail){setSync('err','同步失败');console.warn('推送前读取云端失败，本次跳过推送，稍后自动重试');return;}    if(remote){mergeRemote(remote);await persist();renderAll();}
     // 关键防护②：本机什么都没有而云端有数据（典型：新设备刚输入共享码）→ 只拉不推，绝不用空数据覆盖全家数据
     const localEmpty=!(state.books.length||state.checkins.length||(state.child&&state.child.setup));
-    if(remote&&localEmpty){setSync('ok','☁️ 已拉取云端数据');return;}
+    if(remote&&localEmpty){pendingPush=false;setSync('ok','☁️ 已拉取云端数据');return;}
   }
   // 保护共享头像：本机没有照片且非用户主动清除时，沿用云端已有照片，避免把家庭共享头像清掉
   let childToPush=state.child;
@@ -1284,8 +1285,10 @@ async function doPush(force){if(!SB||!state.settings.familyCode)return;
     if(!error)break;
     if(i<2)await new Promise(res=>setTimeout(res,(i+1)*2000));
   }
-  if(error){setSync('err','同步失败');console.warn(error);}
-  else{lastSeenUpdatedAt=ts;lastSyncOk=Date.now();setSync('ok',syncOkLabel());} // 记录自己刚写的时间串，抑制回显渲染
+  if(error){setSync('err','同步失败');console.warn(error);
+    const now=Date.now(); // 安抚提示（2 分钟内不重复刷屏）：数据不会丢，会自动补传
+    if(now-pushFailToastAt>120000){pushFailToastAt=now;toast('⚠️ 本次同步失败：数据已保存在本机，网络恢复后会自动补传');}}
+  else{pendingPush=false;lastSeenUpdatedAt=ts;lastSyncOk=Date.now();setSync('ok',syncOkLabel());} // 记录自己刚写的时间串，抑制回显渲染
 }
 let syncBlockedWarned=false;
 function warnBlockedOnce(){ // 本地预览服务可能带 CSP connect-src 白名单（不含 supabase），浏览器会拦截全部同步请求
@@ -1357,21 +1360,23 @@ async function checkNewVersion(){ // 手机页面常一连开好几天：回到�
       else{toast('🔁 发现新版本，正在自动更新…');setTimeout(()=>location.reload(),1500);verChecked=0;}
     }
   }catch(e){}}
-function resumeSync(){ // 页面从后台回到前台：立刻拉云端 + 核对版本（后台挂久了轮询和实时订阅可能早就失效）
+function resumeSync(){ // 页面从后台回到前台：立刻拉云端 + 核对版本 + 补传未推上去的本机数据（后台挂久了轮询和实时订阅可能早就失效）
   if(!state.settings.familyCode)return;
-  doPull();checkNewVersion();}
+  doPull();checkNewVersion();
+  if(pendingPush)doPush();}
 async function startSync(){if(!SB)return;bindSync();
   // 定时轮询作为实时订阅的兜底：即便 Supabase Realtime 未开启该表，也能定期拉取家人更新
   if(!syncPolling){syncPolling=true;
-    setInterval(()=>{if(state.settings.familyCode)doPull();},15000);
+    setInterval(()=>{if(!state.settings.familyCode)return;doPull();if(pendingPush)doPush();},15000); // 轮询时顺带补传推送失败的本机数据
     // 切回前台立刻拉一次：不用等 15 秒轮询，B 手机打开 app 就能看到家人最新数据
     document.addEventListener('visibilitychange',()=>{if(!document.hidden)resumeSync();});
-    // 断网恢复后立刻补拉一次
+    // 断网恢复后立刻补拉一次 + 补传积压数据
     window.addEventListener('online',resumeSync);
     // 兜底：个别 WebView/长驻页面不触发 visibilitychange，用户第一次点按页面时若超过 30 秒没同步过则补拉
     document.addEventListener('pointerdown',()=>{if(Date.now()-lastSyncOk>30000)resumeSync();},true);}
   const ok=await doPull();
-  setSync(ok===false?'err':'ok',ok===false?'同步失败，稍后自动重试':syncOkLabel());}
+  setSync(ok===false?'err':'ok',ok===false?'同步失败，稍后自动重试':syncOkLabel());
+  if(ok!==false&&pendingPush)await doPush();} // 启动拉取后立即补传积压数据（典型：昨晚打卡推送失败、今天重新打开 app）
 
 /* ===================== 交互 ===================== */
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2200);}
