@@ -1223,14 +1223,18 @@ function renderSyncBox(){
   const box=document.getElementById('syncBox');
   if(!SB){box.innerHTML='<div class="row"><span style="font-weight:800">📱 仅本机</span><span class="syncdot">云未加载</span></div>'+
     '<div class="minirow"><button class="btn ghost" data-act="retryCloud">🔄 重新加载云组件</button></div>'+
-    '<div style="font-size:12px;color:var(--ink-soft);font-weight:600;margin-top:8px">云组件已内置在本页面中，加载失败一般是网络原因，点上方按钮重试。</div>';return;}
+    '<div style="font-size:12px;color:var(--ink-soft);font-weight:600;margin-top:8px">云组件已内置在本页面中，加载失败一般是网络原因，点上方按钮重试。</div>'+
+    '<div style="font-size:11px;color:var(--ink-soft);margin-top:6px">页面版本 '+BUILD+'</div>';return;}
   const code=state.settings.familyCode;
   if(!code){box.innerHTML='<div class="row"><span style="font-weight:800">☁️ 云同步未开启</span><span class="syncdot">未加入</span></div>'+
-    '<div class="minirow"><button class="btn primary" data-act="openFamily">开启家庭共享</button></div>';return;}
+    '<div class="minirow"><button class="btn primary" data-act="openFamily">开启家庭共享</button></div>'+
+    '<div style="font-size:11px;color:var(--ink-soft);margin-top:6px">页面版本 '+BUILD+'</div>';return;}
   box.innerHTML='<div class="row"><div><div style="font-size:12px;font-weight:700;color:var(--ink-soft)">家庭共享码</div><div class="code">'+code+'</div></div>'+
     '<span class="syncdot '+(syncState)+'" id="syncDot">'+(syncLabel)+'</span></div>'+
     '<div class="minirow"><button class="btn ghost" data-act="copyCode">📋 复制共享码</button>'+
-    '<button class="btn ghost" data-act="exitFamily">退出共享</button></div>';
+    '<button class="btn ghost" data-act="diagnose">🩺 网络诊断</button>'+
+    '<button class="btn ghost" data-act="exitFamily">退出共享</button></div>'+
+    '<div style="font-size:11px;color:var(--ink-soft);margin-top:6px">页面版本 '+BUILD+'（若与最新不一致，回到前台会自动更新）</div>';
 }
 
 function badgeTile(b,on){const el=document.createElement('div');el.className='badge'+(on?' on':'');
@@ -1247,7 +1251,7 @@ function renderBadges(){
 function renderAll(){renderHome();renderBooks();renderMap();renderReport();renderBadges();}
 
 /* ===================== 云端同步 ===================== */
-const BUILD='20261113a'; // 版本戳：手机回到前台时核对线上版本，不同则自动刷新（防止旧页面一直跑旧逻辑收不到家人更新）
+const BUILD='20261114a'; // 版本戳：手机回到前台时核对线上版本，不同则自动刷新（防止旧页面一直跑旧逻辑收不到家人更新）
 let lastSeenUpdatedAt=null, pushTimer=null, syncState='syn', syncLabel='同步中…', explicitClearPhoto=false, syncPolling=false, lastSyncOk=0;
 function syncOkLabel(){const d=new Date();return '已同步 · '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
 function setSync(st,label){syncState=st;if(label)syncLabel=label;const d=document.getElementById('syncDot');if(d){d.className='syncdot '+st;d.textContent=label;}}
@@ -1769,6 +1773,7 @@ document.addEventListener('click',e=>{
     case 'confirmOk':{const f=confirmCb;confirmCb=null;closeModal();if(f)f();}break;
     case 'confirmCancel':confirmCb=null;closeModal();break;
     case 'retryCloud':retryCloud();break;
+    case 'diagnose':diagnoseNetwork();break;
   }
 });
 
@@ -1779,6 +1784,20 @@ async function retryCloud(){ // 云组件（supabase-js）加载失败时的手�
     if(state.settings.familyCode)await startSync();
     renderAll();}
   else toast('⚠️ 仍然失败，请检查网络或换一个网络环境后再试');
+}
+
+async function diagnoseNetwork(){ // 一键网络诊断：分清"手机没网 / 只有数据库被拦 / 网络正常是版本问题"
+  toast('🩺 正在诊断，最多 10 秒…');
+  const probe=async url=>{try{const c=new AbortController();const t=setTimeout(()=>c.abort(),8000);
+      await fetch(url,{mode:'no-cors',cache:'no-store',signal:c.signal});clearTimeout(t);return true;}
+    catch(e){return false;}};
+  const net=await probe('https://www.baidu.com/favicon.ico');      // 第一步：手机能不能上网
+  const api=await probe(CONFIG.SUPABASE_URL+'/rest/v1/');          // 第二步：能不能连到数据库接口
+  let msg;
+  if(!net)msg='📱 诊断结果：手机当前上不了网（连百度都不通）。\n检查 Wi-Fi / 流量开关后再试，同步失败就是这个原因。';
+  else if(api)msg='✅ 诊断结果：网络正常，数据库接口也连通。\n此刻同步没有网络障碍；若同步仍显示失败，多半是页面版本太旧（看不到自动重试功能）——请刷新页面后重试。';
+  else msg='⛔ 诊断结果：手机能上网，但数据库接口连不上——就是那个「间歇性拦截」。\n打卡数据已安全保存在本机，网络放行时会自动补传，过几小时再打开就能同步上。';
+  showConfirm('🩺 网络诊断结果',msg,null);
 }
 document.getElementById('importFile').addEventListener('change',e=>{if(e.target.files[0])importData(e.target.files[0]);e.target.value='';});
 // 打卡卡片：读后感超过一行被省略号截断时，点卡片展开看全文，再点收起（今日打卡/最近打卡/日历当日明细三处通用）
