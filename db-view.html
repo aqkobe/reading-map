@@ -25,7 +25,7 @@ pre{background:#2d2a26;color:#e8e2d5;font-size:11px;line-height:1.5;padding:12px
 <div class="sub">阅读成长地图 · 两个云端数据库的原始数据随时可查（只读，不会改动数据）</div>
 <div class="bar">
   <input id="code" value="DR4HGM" maxlength="12" placeholder="家庭共享码">
-  <button class="b2" onclick="q('wb')">查腾讯云</button>
+  <button id="bwb" class="b2" onclick="q('wb')">查腾讯云</button>
   <button class="b1" onclick="q('sb')">查 Supabase</button>
 </div>
 <div id="out"></div>
@@ -43,6 +43,7 @@ ${l.stack}`)}else c=o?.stack??"";let f=this.url.toString().length;return o?.name
 <script>
 const WBCFG={endpoint:'https://reading-growth-map-15300.app.workbuddy.host',publishableKey:'wbpk_E3BQivcGb4QG4FFUmqZP3e_99VbnlQSF0LAvYRaAPTu8SnOgt6QKD6W'};
 const SBCFG={url:'https://turhfmcyzvvxewlyvxoz.supabase.co',key:'sb_publishable_U2J56gCDMITGSaLL9xcW-Q_dNn9-vEK'};
+const isWBHost=location.hostname.indexOf('workbuddy.host')>-1; // 腾讯云网关有域名白名单：GitHub 等外部域名跨域访问备库会被拒（预检 403）
 let WB=null;
 try{WB=WorkBuddyCloud.createWorkBuddyCloud({endpoint:WBCFG.endpoint,publishableKey:WBCFG.publishableKey}).database;}catch(e){}
 function code(){return (document.getElementById('code').value||'').trim().toUpperCase();}
@@ -68,6 +69,7 @@ async function q(which){
   if(!c){out.innerHTML='<div class="err">请先输入家庭共享码</div>';return;}
   out.innerHTML='<div class="ok">⏳ 正在查询'+(which==='wb'?'腾讯云':'Supabase')+'…</div>';
   try{
+    if(which==='wb'&&!isWBHost){out.innerHTML='<div class="err">⛔ 当前页面（GitHub Pages）无法跨域访问腾讯云数据库——腾讯云网关只允许自家域名跨域（平台白名单）。</div><div class="ok" style="margin-top:8px">请用腾讯云链接打开查看器：<br><a href="https://reading-growth-map-15300.app.workbuddy.host/db-view.html?sharecode=DVMPCO2O22" style="color:#2e7d32">reading-growth-map-15300.app.workbuddy.host/db-view.html</a><br><br>Supabase 的查询在两个链接上都可以正常使用。</div>';return;}
     if(which==='wb'){
       if(!WB)throw new Error('云组件未加载成功，请刷新页面');
       const r=await WB.from('reading_state').select('*').eq('family_id',c).maybeSingle();
@@ -81,6 +83,7 @@ async function q(which){
     }
   }catch(e){out.innerHTML='<div class="err">⛔ '+esc(e.message||String(e))+'</div><div class="ok" style="margin-top:6px">提示：Supabase 在国内网络会被间歇性拦截，查不到时可改用「查腾讯云」，或稍后再试。</div>';}
 }
+if(!isWBHost){const b=document.getElementById('bwb');b.disabled=true;b.style.opacity=.45;b.textContent='查腾讯云（需腾讯云链接）';}
 </script>
 </body>
 </html>

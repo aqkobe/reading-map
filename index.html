@@ -669,10 +669,11 @@ const WBCFG={endpoint:'https://reading-growth-map-15300.app.workbuddy.host',publ
 let SB=null,WB=null;
 let ACTIVE='supabase';                      // 当前生效后端
 const seenTs={supabase:null,tencent:null};  // 各后端已见 updated_at（字符串比较，跨库各自独立，防时钟偏差）
-let lastPrimaryProbe=0,pollN=0;
+let lastPrimaryProbe=0,pollN=0,wbFailAt=0;
 function db(){return ACTIVE==='supabase'?SB:WB;}
 function activeName(){return ACTIVE==='supabase'?'主库':'备库';}
 function switchTo(name,why){if(ACTIVE===name)return false;
+  if(name==='tencent'&&Date.now()-wbFailAt<1800000)return false; // 备库 30 分钟内失败过：不再切（当前域名可能被备库平台白名单挡，避免每次都白试）
   ACTIVE=name;console.warn('已切换到'+(name==='supabase'?'主库(Supabase)':'备库(腾讯云)+'),why||'');return true;}
 async function initWB(){ // 备库客户端：SDK 已内嵌本页面，数据库接口与 supabase-js 完全同形
   if(!WBCFG.endpoint||WB)return;
@@ -1285,7 +1286,7 @@ function renderBadges(){
 function renderAll(){renderHome();renderBooks();renderMap();renderReport();renderBadges();}
 
 /* ===================== 云端同步 ===================== */
-const BUILD='20261114f'; // 版本戳：手机回到前台时核对线上版本，不同则自动刷新（防止旧页面一直跑旧逻辑收不到家人更新）
+const BUILD='20261114g'; // 版本戳：手机回到前台时核对线上版本，不同则自动刷新（防止旧页面一直跑旧逻辑收不到家人更新）
 let lastSeenUpdatedAt=null, pushTimer=null, syncState='syn', syncLabel='同步中…', explicitClearPhoto=false, syncPolling=false, lastSyncOk=0;
 function syncOkLabel(){const d=new Date();return '已同步 · '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
 function setSync(st,label){syncState=st;if(label)syncLabel=label;const d=document.getElementById('syncDot');if(d){d.className='syncdot '+st;d.textContent=label;}}
@@ -1297,7 +1298,9 @@ async function doPush(force){
   setSync('syn','同步中…');
   const r1=await pushOnce(force);
   // 主库推送彻底失败 → 无感切备库整段重试一次
-  if(r1==='fail'&&ACTIVE==='supabase'&&WB&&switchTo('tencent','主库推送失败'))await pushOnce(force);
+  if(r1==='fail'&&ACTIVE==='supabase'&&WB&&switchTo('tencent','主库推送失败')){
+    if(await pushOnce(force)==='fail'&&SB)ACTIVE='supabase'; // 两库都不通：回到主库状态，数据由下轮自动补传
+  }
 }
 async function pushOnce(force){
   const ts=new Date().toISOString();
@@ -1306,10 +1309,11 @@ async function pushOnce(force){
   if(!force){
     let r=await pullFrom(db());
     if((r.netErr||r.error)&&ACTIVE==='supabase'&&WB&&switchTo('tencent','推送前主库读取失败'))r=await pullFrom(db());
+    if(r.netErr&&ACTIVE==='tencent'&&SB&&switchTo('supabase','备库读取失败'))r=await pullFrom(db());
     if(r.netErr||r.error)readFail=true;
     else if(r.data&&r.data.data){remote=r.data.data;if(r.data.data.child)remotePhoto=r.data.data.child.photo;}
     // 关键防护①：读取当前库失败 → 本次绝不推送（避免把失败当「云端没数据」导致空覆盖）
-    if(readFail){setSync('err','同步失败');console.warn('推送前读取云端失败，本次跳过推送，稍后自动重试');return 'fail';}
+    if(readFail){if(ACTIVE==='tencent'&&r&&r.netErr)wbFailAt=Date.now();setSync('err','同步失败');console.warn('推送前读取云端失败，本次跳过推送，稍后自动重试');return 'fail';}
     if(remote){mergeRemote(remote);await persist();renderAll();}
     // 关键防护②：本机什么都没有而云端有数据（典型：新设备刚输入共享码）→ 只拉不推
     const localEmpty=!(state.books.length||state.checkins.length||(state.child&&state.child.setup));
@@ -1351,7 +1355,9 @@ async function doPull(){if(!db()||!state.settings.familyCode)return false;
   let r=await pullFrom(db());
   // 主库拉取失败 → 无感切备库立即重试（用户全程无感知，只是数据来源换了）
   if((r.netErr||r.error)&&ACTIVE==='supabase'&&WB&&switchTo('tencent','主库拉取失败'))r=await pullFrom(db());
-  if(r.netErr){setSync('err','同步失败');console.warn('拉取云端网络异常:',r.netErr.message||r.netErr);warnBlockedOnce();return false;}
+  // 备库也不通（如 GitHub 域名被备库平台白名单挡）：立即切回主库重试，最坏退化为单库行为
+  if(r.netErr&&ACTIVE==='tencent'&&SB&&switchTo('supabase','备库不可用'))r=await pullFrom(db());
+  if(r.netErr){if(ACTIVE==='tencent')wbFailAt=Date.now();setSync('err','同步失败');console.warn('拉取云端网络异常:',r.netErr.message||r.netErr);warnBlockedOnce();return false;}
   if(r.error){setSync('err','同步失败');console.warn('拉取云端失败:',r.error.message||r.error);return false;}
   if(!r.data)return true; // 当前库还没有该共享码的行（全新家庭），正常
   lastSyncOk=Date.now();setSync('ok',syncOkLabel());
