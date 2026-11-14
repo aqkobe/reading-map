@@ -667,17 +667,16 @@ const CONFIG={SUPABASE_URL:'https://turhfmcyzvvxewlyvxoz.supabase.co', SUPABASE_
    两库定期互拉 + 推送双写，数据自动收敛，用户全程无感知 */
 const WBCFG={endpoint:'https://reading-growth-map-15300.app.workbuddy.host',publishableKey:'wbpk_E3BQivcGb4QG4FFUmqZP3e_99VbnlQSF0LAvYRaAPTu8SnOgt6QKD6W'};
 let SB=null,WB=null;
-let ACTIVE='supabase';                      // 当前生效后端
+let ACTIVE='supabase';                      // 当前生效后端（默认锁死主库）
 const seenTs={supabase:null,tencent:null};  // 各后端已见 updated_at（字符串比较，跨库各自独立，防时钟偏差）
-let lastPrimaryProbe=0,pollN=0,wbFailAt=0,failStreak=0,probeOk=0;
+const AUTO_SWITCH_STRIKES=7;                // 主库连续失败 N 次才自动切备库（用户定稿规则）
+let pollN=0,failStreak=0;
 function db(){return ACTIVE==='supabase'?SB:WB;}
 function activeName(){return ACTIVE==='supabase'?'主库':'备库';}
 function switchTo(name,why){if(ACTIVE===name)return false;
-  if(name==='tencent'&&Date.now()-wbFailAt<1800000)return false; // 备库 30 分钟内失败过：不再切（当前域名可能被备库平台白名单挡，避免每次都白试）
-  ACTIVE=name;if(typeof renderSyncBox==='function')renderSyncBox();console.warn('已切换到'+(name==='supabase'?'主库(Supabase)':'备库(腾讯云)'),why||'');return true;}
-function manualSwitchDb(){ // 用户手动切换数据库：无视 30 分钟退避，切完立即拉取+补传
+  ACTIVE=name;failStreak=0;if(typeof renderSyncBox==='function')renderSyncBox();console.warn('已切换到'+(name==='supabase'?'主库(Supabase)':'备库(腾讯云)'),why||'');return true;}
+function manualSwitchDb(){ // 切回主库永远由用户手动操作；切完立即拉取+补传
   const to=ACTIVE==='supabase'?'tencent':'supabase';
-  wbFailAt=0;failStreak=0;probeOk=0; // 手动操作不受备库退避与防抖计数限制
   if(!switchTo(to,'手动切换')){toast('当前已经在 '+(ACTIVE==='supabase'?'主库':'备库')+' 了');return;}
   toast('已切换到 '+(to==='supabase'?'🔵 Supabase（主库）':'🟢 腾讯云（备库）'));
   renderSyncBox();doPull();if(pendingPush)doPush();}
@@ -1297,7 +1296,7 @@ function renderBadges(){
 function renderAll(){renderHome();renderBooks();renderMap();renderReport();renderBadges();}
 
 /* ===================== 云端同步 ===================== */
-const BUILD='20261114k'; // 版本戳：手机回到前台时核对线上版本，不同则自动刷新（防止旧页面一直跑旧逻辑收不到家人更新）
+const BUILD='20261114l'; // 版本戳：手机回到前台时核对线上版本，不同则自动刷新（防止旧页面一直跑旧逻辑收不到家人更新）
 let lastSeenUpdatedAt=null, pushTimer=null, syncState='syn', syncLabel='同步中…', explicitClearPhoto=false, syncPolling=false, lastSyncOk=0;
 function syncOkLabel(){const d=new Date();return '已同步 · '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
 function setSync(st,label){syncState=st;if(label)syncLabel=label;const d=document.getElementById('syncDot');if(d){d.className='syncdot '+st;d.textContent=label;}}
@@ -1308,10 +1307,10 @@ async function doPush(force){
   if((!SB&&!WB)||!state.settings.familyCode)return;
   setSync('syn','同步中…');
   const r1=await pushOnce(force);
-  // 主库推送彻底失败 → 无感切备库整段重试一次（failStreak>=2 才切：与拉取共用防抖计数，单次抖动不切）
-  if(r1==='fail'&&ACTIVE==='supabase'&&failStreak>=2&&WB&&switchTo('tencent','主库连续推送失败')){
-    failStreak=0;
-    if(await pushOnce(force)==='fail'&&SB)ACTIVE='supabase'; // 两库都不通：回到主库状态，数据由下轮自动补传
+  // 主库连续 7 次同步失败 → 自动切备库整段重试一次（唯一自动切库入口）
+  if(r1==='fail'&&ACTIVE==='supabase'&&failStreak>=AUTO_SWITCH_STRIKES&&WB&&switchTo('tencent','主库连续'+AUTO_SWITCH_STRIKES+'次同步失败')){
+    toast('⚠️ Supabase 连续 '+AUTO_SWITCH_STRIKES+' 次同步失败，已自动切换到腾讯云备用库');
+    await pushOnce(force); // 切到备库后重试推送；之后是否切回主库由用户手动决定
   }
 }
 async function pushOnce(force){
@@ -1320,14 +1319,12 @@ async function pushOnce(force){
   let remote=null,remotePhoto=null,readFail=false;
   if(!force){
     let r=await pullFrom(db());
-    // 防抖：与 doPull 共用连续失败计数（单次网络抖动不切库）
+    // 计入连续失败计数（只在计数达到 7 时由 doPush/doPull 统一切库，这里不再自动切）
     if(r.netErr&&ACTIVE==='supabase')failStreak++;else if(!r.netErr&&!r.error)failStreak=0;
-    if((r.error||r.netErr&&failStreak>=2)&&ACTIVE==='supabase'&&WB&&switchTo('tencent','推送前主库连续读取失败')){failStreak=0;r=await pullFrom(db());}
-    if(r.netErr&&ACTIVE==='tencent'&&SB&&switchTo('supabase','备库读取失败'))r=await pullFrom(db());
     if(r.netErr||r.error)readFail=true;
     else if(r.data&&r.data.data){remote=r.data.data;if(r.data.data.child)remotePhoto=r.data.data.child.photo;}
     // 关键防护①：读取当前库失败 → 本次绝不推送（避免把失败当「云端没数据」导致空覆盖）
-    if(readFail){if(ACTIVE==='tencent'&&r&&r.netErr)wbFailAt=Date.now();setSync('err','同步失败');console.warn('推送前读取云端失败，本次跳过推送，稍后自动重试');return 'fail';}
+    if(readFail){setSync('err',ACTIVE==='tencent'?'备库同步失败':'同步失败（重试 '+Math.min(failStreak,AUTO_SWITCH_STRIKES)+'/'+AUTO_SWITCH_STRIKES+'）');console.warn('推送前读取云端失败，本次跳过推送，稍后自动重试');return 'fail';}
     if(remote){mergeRemote(remote);await persist();renderAll();}
     // 关键防护②：本机什么都没有而云端有数据（典型：新设备刚输入共享码）→ 只拉不推
     const localEmpty=!(state.books.length||state.checkins.length||(state.child&&state.child.setup));
@@ -1368,13 +1365,12 @@ function warnBlockedOnce(){ // 本地预览服务可能带 CSP connect-src 白�
     toast('⚠️ 预览环境拦截了联网，请直接打开 HTML 文件或用正式链接');}}
 async function doPull(){if(!db()||!state.settings.familyCode)return false;
   let r=await pullFrom(db());
-  // 防抖：主库要连续 2 次网络失败才自动切备库（单次抖动不切，避免状态行反复横跳）
+  // 连续失败计数：主库连续 7 次网络失败才自动切备库（唯一自动切库入口，用户定稿规则）
   if(r.netErr&&ACTIVE==='supabase')failStreak++;else if(!r.netErr&&!r.error)failStreak=0;
-  // 主库拉取失败 → 无感切备库立即重试（用户全程无感知，只是数据来源换了）
-  if((r.error||r.netErr&&failStreak>=2)&&ACTIVE==='supabase'&&WB&&switchTo('tencent','主库连续拉取失败')){failStreak=0;r=await pullFrom(db());}
-  // 备库也不通（如 GitHub 域名被备库平台白名单挡）：立即切回主库重试，最坏退化为单库行为
-  if(r.netErr&&ACTIVE==='tencent'&&SB&&switchTo('supabase','备库不可用'))r=await pullFrom(db());
-  if(r.netErr){if(ACTIVE==='tencent')wbFailAt=Date.now();setSync('err','同步失败');console.warn('拉取云端网络异常:',r.netErr.message||r.netErr);warnBlockedOnce();return false;}
+  if(failStreak>=AUTO_SWITCH_STRIKES&&ACTIVE==='supabase'&&WB&&switchTo('tencent','主库连续'+AUTO_SWITCH_STRIKES+'次拉取失败')){
+    toast('⚠️ Supabase 连续 '+AUTO_SWITCH_STRIKES+' 次同步失败，已自动切换到腾讯云备用库');
+    r=await pullFrom(db());}
+  if(r.netErr){setSync('err',ACTIVE==='tencent'?'备库同步失败':'同步失败（重试 '+Math.min(failStreak,AUTO_SWITCH_STRIKES)+'/'+AUTO_SWITCH_STRIKES+'）');console.warn('拉取云端网络异常:',r.netErr.message||r.netErr);warnBlockedOnce();return false;}
   if(r.error){setSync('err','同步失败');console.warn('拉取云端失败:',r.error.message||r.error);return false;}
   if(!r.data)return true; // 当前库还没有该共享码的行（全新家庭），正常
   lastSyncOk=Date.now();setSync('ok',syncOkLabel());
@@ -1393,14 +1389,7 @@ async function pullInactive(){ // 定期互拉：把另一个库的数据并进�
   const other=ACTIVE==='supabase'?WB:SB;if(!other||!state.settings.familyCode)return;
   try{const r=await pullFrom(other);const d=r&&r.data&&r.data.data;
     if(d&&mergeRemote(d)){await persist();renderAll();schedulePush();}}catch(e){}}
-async function probePrimary(){ // 备库模式下定期探测主库：连续 2 次探测成功才回切（防抖：一次成功可能是瞬时窗口，切过去又失败会反复横跳）
-  if(ACTIVE!=='tencent'||!SB)return;
-  lastPrimaryProbe=Date.now();
-  try{const r=await pullFrom(SB);
-    if(!r.netErr&&!r.error){probeOk++;
-      if(probeOk>=2&&switchTo('supabase','主库连续恢复，自动切回')){probeOk=0;schedulePush();}}
-    else probeOk=0;
-  }catch(e){}} // 切回主库后 schedulePush：立即补推备库期间积攒的数据，主库马上补齐
+// 注：不自动探测回切主库——切回主库永远由用户点「切换」按钮（用户定稿规则）
 function mergeRemote(rd){
   const before=JSON.stringify([state.books,state.checkins,state.child,state.deleted]);
   // 合并删除墓碑：取并集，时间戳取较大者（保证一端删除能传播到另一端）
@@ -1446,14 +1435,12 @@ async function checkNewVersion(){ // 手机页面常一连开好几天：回到�
 function resumeSync(){ // 页面从后台回到前台：立刻拉云端 + 核对版本 + 补传未推上去的本机数据（后台挂久了轮询和实时订阅可能早就失效）
   if(!state.settings.familyCode)return;
   doPull();checkNewVersion();
-  if(ACTIVE==='tencent'&&SB&&Date.now()-lastPrimaryProbe>60000)probePrimary(); // 回前台顺带探测主库是否恢复
   if(pendingPush)doPush();}
 async function startSync(){if(!SB&&!WB)return;bindSync();
   // 定时轮询作为实时订阅的兜底：即便 Supabase Realtime 未开启该表，也能定期拉取家人更新
   if(!syncPolling){syncPolling=true;
     setInterval(()=>{if(!state.settings.familyCode)return;pollN++;doPull();if(pendingPush)doPush();
-    if(pollN%5===0)pullInactive(); // 每 75 秒互拉一次，两库自动收敛
-    if(ACTIVE==='tencent'&&Date.now()-lastPrimaryProbe>300000)probePrimary();},15000); // 轮询：拉取+补传+双库收敛
+    if(pollN%5===0)pullInactive();},15000); // 每 75 秒互拉一次，两库自动收敛
     // 切回前台立刻拉一次：不用等 15 秒轮询，B 手机打开 app 就能看到家人最新数据
     document.addEventListener('visibilitychange',()=>{if(!document.hidden)resumeSync();});
     // 断网恢复后立刻补拉一次 + 补传积压数据
