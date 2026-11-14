@@ -674,7 +674,7 @@ function db(){return ACTIVE==='supabase'?SB:WB;}
 function activeName(){return ACTIVE==='supabase'?'主库':'备库';}
 function switchTo(name,why){if(ACTIVE===name)return false;
   if(name==='tencent'&&Date.now()-wbFailAt<1800000)return false; // 备库 30 分钟内失败过：不再切（当前域名可能被备库平台白名单挡，避免每次都白试）
-  ACTIVE=name;console.warn('已切换到'+(name==='supabase'?'主库(Supabase)':'备库(腾讯云)+'),why||'');return true;}
+  if(typeof renderSyncBox==='function')renderSyncBox();ACTIVE=name;console.warn('已切换到'+(name==='supabase'?'主库(Supabase)':'备库(腾讯云)+'),why||'');return true;}
 async function initWB(){ // 备库客户端：SDK 已内嵌本页面，数据库接口与 supabase-js 完全同形
   if(!WBCFG.endpoint||WB)return;
   if(typeof WorkBuddyCloud==='undefined'){console.warn('备库 SDK 未加载');return;}
@@ -1269,7 +1269,10 @@ function renderSyncBox(){
     '<span class="syncdot '+(syncState)+'" id="syncDot">'+(syncLabel)+'</span></div>'+
     '<div class="minirow"><button class="btn ghost" data-act="copyCode">📋 复制共享码</button>'+
         '<button class="btn ghost" data-act="exitFamily">退出共享</button></div>'+
-    '<div style="font-size:11px;color:var(--ink-soft);margin-top:6px">页面版本 '+BUILD+' · 线路 '+activeName()+'（若与最新不一致，回到前台会自动更新）</div>';
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding:8px 12px;border-radius:10px;background:rgba(0,0,0,.045)">'+
+    '<span style="font-size:12px;font-weight:700;color:var(--ink-soft)">当前数据库</span>'+
+    '<span style="font-size:12px;font-weight:800;color:'+(ACTIVE==='supabase'?'#3a6ea8':'#2e9e5b')+'">'+(ACTIVE==='supabase'?'🔵 Supabase（主库）':'🟢 腾讯云（备库）')+'</span></div>'+
+    '<div style="font-size:11px;color:var(--ink-soft);margin-top:6px">页面版本 '+BUILD+'（若与最新不一致，回到前台会自动更新）</div>';
 }
 
 function badgeTile(b,on){const el=document.createElement('div');el.className='badge'+(on?' on':'');
@@ -1286,7 +1289,7 @@ function renderBadges(){
 function renderAll(){renderHome();renderBooks();renderMap();renderReport();renderBadges();}
 
 /* ===================== 云端同步 ===================== */
-const BUILD='20261114g'; // 版本戳：手机回到前台时核对线上版本，不同则自动刷新（防止旧页面一直跑旧逻辑收不到家人更新）
+const BUILD='20261114h'; // 版本戳：手机回到前台时核对线上版本，不同则自动刷新（防止旧页面一直跑旧逻辑收不到家人更新）
 let lastSeenUpdatedAt=null, pushTimer=null, syncState='syn', syncLabel='同步中…', explicitClearPhoto=false, syncPolling=false, lastSyncOk=0;
 function syncOkLabel(){const d=new Date();return '已同步 · '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
 function setSync(st,label){syncState=st;if(label)syncLabel=label;const d=document.getElementById('syncDot');if(d){d.className='syncdot '+st;d.textContent=label;}}
@@ -1375,12 +1378,13 @@ async function doPull(){if(!db()||!state.settings.familyCode)return false;
 async function pullInactive(){ // 定期互拉：把另一个库的数据并进本机（幂等），两库自动收敛
   const other=ACTIVE==='supabase'?WB:SB;if(!other||!state.settings.familyCode)return;
   try{const r=await pullFrom(other);const d=r&&r.data&&r.data.data;
-    if(d&&mergeRemote(d)){await persist();renderAll();}}catch(e){}}
+    if(d&&mergeRemote(d)){await persist();renderAll();schedulePush();}}catch(e){}}
 async function probePrimary(){ // 备库模式下定期探测主库，通了就自动回切（双写保证主库不缺数据）
   if(ACTIVE!=='tencent'||!SB)return;
   lastPrimaryProbe=Date.now();
   try{const r=await pullFrom(SB);
-    if(!r.netErr&&!r.error)switchTo('supabase','主库恢复，自动切回');}catch(e){}}
+    if(!r.netErr&&!r.error&&switchTo('supabase','主库恢复，自动切回'))schedulePush();
+  }catch(e){}} // 切回主库后 schedulePush：立即补推备库期间积攒的数据，主库马上补齐
 function mergeRemote(rd){
   const before=JSON.stringify([state.books,state.checkins,state.child,state.deleted]);
   // 合并删除墓碑：取并集，时间戳取较大者（保证一端删除能传播到另一端）
