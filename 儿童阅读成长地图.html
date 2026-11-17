@@ -1296,7 +1296,7 @@ function renderBadges(){
 function renderAll(){renderHome();renderBooks();renderMap();renderReport();renderBadges();}
 
 /* ===================== 云端同步 ===================== */
-const BUILD='20261114l'; // 版本戳：手机回到前台时核对线上版本，不同则自动刷新（防止旧页面一直跑旧逻辑收不到家人更新）
+const BUILD='20261117a'; // 版本戳：手机回到前台时核对线上版本，不同则自动刷新（防止旧页面一直跑旧逻辑收不到家人更新）
 let lastSeenUpdatedAt=null, pushTimer=null, syncState='syn', syncLabel='同步中…', explicitClearPhoto=false, syncPolling=false, lastSyncOk=0;
 function syncOkLabel(){const d=new Date();return '已同步 · '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
 function setSync(st,label){syncState=st;if(label)syncLabel=label;const d=document.getElementById('syncDot');if(d){d.className='syncdot '+st;d.textContent=label;}}
@@ -1875,6 +1875,14 @@ document.getElementById('photoFile').addEventListener('change',onPhotoFile);
 (async function init(){
   state=seed();        // 先用空状态，保证 UI 与按钮立即可用（不依赖任何网络/存储）
   renderAll();
+  // GitHub Pages 域名提示：该域名下主库在国内网络间歇被拦、且腾讯云备库因平台跨域白名单不可达 → 引导换用完整可用的腾讯云链接
+  if(location.hostname.indexOf('github.io')>-1&&!localStorage.getItem('rgm_gh_hint')){
+    const b=document.createElement('div');
+    b.style.cssText='margin:10px 14px;padding:10px 14px;border-radius:12px;background:#fff4e5;border:1px solid #f0c987;font-size:13px;line-height:1.7';
+    b.innerHTML='⚠️ <b>当前链接（GitHub）同步不稳定</b>，且无法连接腾讯云备用库。建议换用完整可用的新链接：<br><a href="https://reading-growth-map-15300.app.workbuddy.host/?sharecode=DVMPCO2O22" style="color:#b8860b;font-weight:800;word-break:break-all">reading-growth-map-15300.app.workbuddy.host</a><br><span style="font-size:12px;color:#a07830">换链接前先在此页「设置 → 导出备份」，再到新链接「导入备份」，把本机打卡数据带过去。</span><a href="javascript:void(0)" id="ghHintClose" style="float:right;color:#a07830">关闭</a>';
+    const ph=document.getElementById('page-home');ph.insertBefore(b,ph.firstChild);
+    document.getElementById('ghHintClose').onclick=()=>{localStorage.setItem('rgm_gh_hint','1');b.remove();};
+  }
   await initSupabase();initWB();// 仅在配置了 Supabase 时才去加载脚本，否则完全不阻塞
   const saved=await loadState();
   if(saved)state=saved;
