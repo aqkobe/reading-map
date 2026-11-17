@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>一键同步：Supabase → 腾讯云</title>
+<style>
+body{font-family:-apple-system,sans-serif;max-width:640px;margin:24px auto;padding:0 16px;background:#f7f5ef;color:#333}
+h1{font-size:20px}button{padding:10px 18px;border:0;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;background:#2e9e5b;color:#fff}
+button:disabled{opacity:.5}
+pre{background:#fff;border-radius:10px;padding:12px;font-size:12px;white-space:pre-wrap;word-break:break-all;max-height:300px;overflow:auto}
+.ok{color:#2e9e5b;font-weight:800}.err{color:#c0392b;font-weight:800}
+.card{background:#fff;border-radius:14px;padding:14px;margin:12px 0;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+a{color:#2e7d32}
+</style>
+<script src="wbc-sdk.js"></script>
+</head>
+<body>
+<h1>🔄 一键同步：把 Supabase 数据搬进腾讯云</h1>
+<div class="card" id="status">⏳ 正在连接 Supabase 读取数据…</div>
+<div class="card" id="detail" style="display:none">
+  <div id="cmp"></div>
+  <button id="go" onclick="sync()">🔄 立即同步到腾讯云</button>
+</div>
+<pre id="out"></pre>
+<script>
+const SB_URL='https://turhfmcyzvvxewlyvxoz.supabase.co/rest/v1/reading_state';
+const SB_KEY='sb_publishable_U2J56gCDMITGSaLL9xcW-Q_dNn9-vEK';
+const esc=s=>String(s==null?'':s).replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+let sbRow=null;
+function log(t){document.getElementById('out').textContent=t+'\n'+document.getElementById('out').textContent;}
+async function load(){
+  try{
+    const r=await fetch(SB_URL+'?family_id=eq.DR4HGM&apikey='+SB_KEY,{cache:'no-store'});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const j=await r.json();
+    if(!j[0]||!j[0].data)throw new Error('云端无数据行');
+    sbRow=j[0];
+    const d=sbRow.data,ck=d.checkins||[],bk=d.books||[];
+    // 腾讯云当前状态（自家域名，稳定可达）
+    let wbInfo='读取中…';
+    try{
+      const{createWorkBuddyCloud}=WorkBuddyCloud;
+      const WB=createWorkBuddyCloud({endpoint:location.origin,publishableKey:'wbpk_E3BQivcGb4QG4FFUmqZP3e_99VbnlQSF0LAvYRaAPTu8SnOgt6QKD6W'}).database;
+      const w=await WB.from('reading_state').select('*').eq('family_id','DR4HGM').maybeSingle();
+      if(w.data){const wd=w.data.data;
+        wbInfo='腾讯云：书籍 '+(wd.books||[]).length+' · 打卡 '+(wd.checkins||[]).length+' · 行时间戳 '+esc(w.data.updated_at);
+      }else wbInfo='腾讯云：暂无数据行';
+    }catch(e){wbInfo='腾讯云读取失败：'+esc(e.message||e);}
+    const last=ck.slice().sort((a,b)=>(b.ts||0)-(a.ts||0))[0];
+    const lastStr=last?new Date(last.ts<1e12?last.ts*1000:last.ts).toLocaleString('zh-CN'):'无';
+    document.getElementById('cmp').innerHTML=
+      '<div style="font-size:14px;margin-bottom:8px"><b>Supabase（数据源）：</b>书籍 '+bk.length+' · 打卡 '+ck.length+' · 最新打卡 '+esc(lastStr)+'<br><span style="font-size:12px;color:#888">行时间戳 '+esc(sbRow.updated_at)+'</span></div>'+
+      '<div style="font-size:14px;margin-bottom:10px"><b>'+wbInfo+'</b></div>';
+    document.getElementById('status').innerHTML='<span class="ok">✅ 连接 Supabase 成功</span>（你的浏览器可以直达数据源）';
+    document.getElementById('detail').style.display='block';
+  }catch(e){
+    document.getElementById('status').innerHTML='<span class="err">⛔ 连接 Supabase 失败：'+esc(e.message)+'。这个域名时好时坏，请刷新本页多试几次。</span>';
+  }
+}
+async function sync(){
+  const btn=document.getElementById('go');
+  btn.disabled=true;btn.textContent='⏳ 正在同步…';
+  try{
+    if(!sbRow)throw new Error('数据未就绪，请刷新页面');
+    const{createWorkBuddyCloud}=WorkBuddyCloud;
+    const WB=createWorkBuddyCloud({endpoint:location.origin,publishableKey:'wbpk_E3BQivcGb4QG4FFUmqZP3e_99VbnlQSF0LAvYRaAPTu8SnOgt6QKD6W'}).database;
+    // 写入：以 Supabase 数据为准整体覆盖腾讯云行，行时间戳沿用 Supabase 的（保持两库一致，手机按此比较增量）
+    const r=await WB.from('reading_state').upsert({family_id:'DR4HGM',data:sbRow.data,updated_at:sbRow.updated_at},{onConflict:'family_id'});
+    if(r.error)throw new Error(r.error.message||JSON.stringify(r.error));
+    // 复查
+    const v=await WB.from('reading_state').select('*').eq('family_id','DR4HGM').maybeSingle();
+    const vd=v.data?v.data.data:{};
+    log('✅ 同步成功！腾讯云现在：书籍 '+(vd.books||[]).length+' · 打卡 '+(vd.checkins||[]).length+' · 行时间戳 '+(v.data?v.data.updated_at:'?'));
+    btn.textContent='✅ 同步完成';
+  }catch(e){
+    log('⛔ 同步失败：'+(e.message||e));
+    btn.disabled=false;btn.textContent='🔁 重试同步';
+  }
+}
+load();
+</script>
+
+</body>
+</html>
